@@ -252,11 +252,12 @@
     .form-grid{grid-template-columns:1fr;}
     .form-input,.form-select{font-size:16px;padding:12px;} /* 16px prevents iOS zoom */
 
-    /* Product form — stack vertically on mobile */
+    /* Product form — nombre full width, resto abajo */
     .prod-inputs-row{flex-wrap:wrap;gap:8px;}
     .prod-inputs-row .form-input{min-width:0;}
-    .prod-inputs-row .form-input.marca-inp{width:calc(50% - 4px);flex:none;}
-    .prod-inputs-row .form-input[id=prod-presentacion]{width:calc(50% - 4px);flex:none;}
+    .prod-inputs-row #prod-nombre{width:100%;flex:none;}
+    .prod-inputs-row .form-input.marca-inp{flex:1;}
+    .prod-inputs-row .form-input[id=prod-presentacion]{width:110px;flex:none;}
     .prod-inputs-row .form-input[id=prod-cantidad]{width:80px;flex:none;}
     .prod-inputs-row .form-input.precio-inp{flex:1;}
     .prod-inputs-row .btn{width:100%;margin-top:4px;}
@@ -783,8 +784,20 @@ function addMovimiento(){
   else{const origen=document.getElementById('f-origen').value.trim(),desc=document.getElementById('f-desc-i').value.trim();if(!origen)return;ingresos.push({id:uid(),origen,monto,desc,fecha});}
   save();renderFormFields();renderItemsList();
 }
-function delGasto(id){gastos=gastos.filter(x=>x.id!==id);save();renderItemsList();}
-function delIngreso(id){ingresos=ingresos.filter(x=>x.id!==id);save();renderItemsList();}
+function delGasto(id){
+  const g=gastos.find(x=>x.id===id);
+  if(!g)return;
+  showConfirm('Eliminar gasto',`¿Eliminás "${g.titulo||g.desc||'este gasto'}" de ${fmt(g.monto)}?`,()=>{
+    gastos=gastos.filter(x=>x.id!==id);save();renderItemsList();
+  });
+}
+function delIngreso(id){
+  const i=ingresos.find(x=>x.id===id);
+  if(!i)return;
+  showConfirm('Eliminar ingreso',`¿Eliminás el ingreso de ${i.origen} por ${fmt(i.monto)}?`,()=>{
+    ingresos=ingresos.filter(x=>x.id!==id);save();renderItemsList();
+  });
+}
 
 // ── Supermercado ─────────────────────────────────────────────────────────────
 function renderSuper(){
