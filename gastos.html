@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mis Finanzas">
+<title>Mis Finanzas</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:#0e0e0e; --surface:#161616; --surface2:#1e1e1e;
+    --border:#2a2a2a; --border2:#333; --text:#f0ede8;
+    --muted:#666; --muted2:#888;
+    --green:#3ddc84; --green-dim:#1a3d2a;
+    --red:#ff5c5c; --red-dim:#3d1a1a;
+    --blue:#4da6ff; --amber:#ffb547; --pink:#e879a0; --teal:#2dd4bf; --purple:#a78bfa;
+    --font-display:'Syne',sans-serif; --font-mono:'DM Mono',monospace;
+    --radius:10px; --radius-lg:16px;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-display);min-height:100vh;-webkit-font-smoothing:antialiased;}
+  .layout{display:flex;min-height:100vh;}
+
+  .sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:2rem 0;position:fixed;top:0;left:0;bottom:0;z-index:10;}
+  .logo{padding:0 1.5rem 2rem;border-bottom:1px solid var(--border);margin-bottom:1.5rem;}
+  .logo-title{font-size:18px;font-weight:700;letter-spacing:-0.5px;}
+  .logo-sub{font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:2px;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 1.5rem;font-size:14px;color:var(--muted2);cursor:pointer;border-left:2px solid transparent;transition:all 0.15s;user-select:none;}
+  .nav-item:hover{color:var(--text);background:var(--surface2);}
+  .nav-item.active{color:var(--text);border-left-color:var(--green);background:var(--surface2);}
+  .nav-icon{width:16px;height:16px;opacity:0.7;}
+  .nav-item.active .nav-icon{opacity:1;}
+  .sidebar-footer{margin-top:auto;padding:1.5rem;border-top:1px solid var(--border);}
+  .month-selector{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;}
+  .month-btn{background:none;border:none;color:var(--muted2);cursor:pointer;font-size:16px;line-height:1;padding:0 2px;transition:color 0.15s;}
+  .month-btn:hover{color:var(--text);}
+  .month-label{flex:1;text-align:center;font-size:12px;font-family:var(--font-mono);color:var(--text);}
+
+  .main{margin-left:220px;flex:1;padding:2.5rem;max-width:960px;}
+  .page-header{margin-bottom:2rem;}
+  .page-title{font-size:26px;font-weight:700;letter-spacing:-0.5px;}
+  .page-subtitle{font-size:13px;color:var(--muted2);font-family:var(--font-mono);margin-top:4px;}
+
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:2rem;}
+  .metric-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;transition:border-color 0.2s;}
+  .metric-card:hover{border-color:var(--border2);}
+  .metric-label{font-size:11px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;}
+  .metric-value{font-size:22px;font-weight:700;letter-spacing:-0.5px;}
+  .metric-value.green{color:var(--green);} .metric-value.red{color:var(--red);}
+  .metric-sub{font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-top:6px;}
+
+  .charts-row{display:grid;grid-template-columns:1fr 1.6fr;gap:16px;margin-bottom:2rem;}
+  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;}
+  .chart-card-title{font-size:12px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:1.25rem;}
+  .donut-wrap{position:relative;height:200px;display:flex;align-items:center;justify-content:center;}
+  .donut-center{position:absolute;text-align:center;pointer-events:none;}
+  .donut-center-val{font-size:20px;font-weight:700;color:var(--text);}
+  .donut-center-lbl{font-size:10px;font-family:var(--font-mono);color:var(--muted);}
+  .bar-wrap{position:relative;height:200px;}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:1rem;}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:12px;font-family:var(--font-mono);color:var(--muted2);}
+  .legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+
+  .progress-row{margin-bottom:14px;}
+  .progress-meta{display:flex;justify-content:space-between;margin-bottom:6px;}
+  .progress-cat{font-size:13px;color:var(--text);}
+  .progress-val{font-size:12px;font-family:var(--font-mono);color:var(--muted2);}
+  .progress-track{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;}
+  .progress-fill{height:100%;border-radius:2px;transition:width 0.5s cubic-bezier(.4,0,.2,1);}
+
+  .section-label{font-size:11px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1rem;}
+
+  .form-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;margin-bottom:1.5rem;}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+  .form-group{display:flex;flex-direction:column;gap:6px;}
+  .form-label{font-size:11px;font-family:var(--font-mono);color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;}
+  .form-input,.form-select{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font-display);font-size:14px;padding:10px 12px;outline:none;transition:border-color 0.15s;width:100%;}
+  .form-input:focus,.form-select:focus{border-color:var(--border2);}
+  .form-input::placeholder{color:var(--muted);}
+  .form-select option{background:var(--surface2);}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 20px;border-radius:var(--radius);font-family:var(--font-display);font-size:14px;font-weight:500;cursor:pointer;transition:all 0.15s;border:none;width:100%;}
+  .btn-green{background:var(--green);color:#0e0e0e;} .btn-green:hover{background:#4ef090;}
+  .btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--muted2);} .btn-ghost:hover{background:var(--surface2);color:var(--text);}
+  .btn-danger{background:var(--red-dim);color:var(--red);border:1px solid #5a2020;} .btn-danger:hover{background:#4d2020;}
+  .btn-sm{padding:7px 16px;font-size:12px;width:auto;}
+
+  .type-toggle{display:flex;gap:8px;margin-bottom:1.25rem;}
+  .toggle-btn{flex:1;padding:9px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--muted2);font-family:var(--font-display);font-size:13px;cursor:pointer;transition:all 0.15s;text-align:center;}
+  .toggle-btn.active-g{background:var(--red-dim);color:var(--red);border-color:#5a2020;}
+  .toggle-btn.active-i{background:var(--green-dim);color:var(--green);border-color:#1a4d30;}
+
+  .items-list{display:flex;flex-direction:column;gap:8px;}
+  .item-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;transition:border-color 0.15s;animation:fadeIn 0.2s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+  .item-row:hover{border-color:var(--border2);}
+  .item-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .item-body{flex:1;min-width:0;}
+  .item-desc{font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .item-meta{font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-top:3px;}
+  .item-amount{font-size:14px;font-weight:500;font-family:var(--font-mono);flex-shrink:0;}
+  .item-amount.income{color:var(--green);} .item-amount.expense{color:var(--red);}
+  .item-actions{display:flex;gap:4px;flex-shrink:0;}
+  .item-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:4px 7px;border-radius:4px;transition:all 0.15s;line-height:1;}
+  .item-btn.edit:hover{color:var(--blue);background:rgba(77,166,255,0.1);}
+  .item-btn.del:hover{color:var(--red);background:var(--red-dim);}
+  .item-btn.view:hover{color:var(--amber);background:rgba(255,181,71,0.1);}
+
+  /* Historial calendario */
+  .hist-switcher{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1.5rem;}
+  .hist-switch-btn{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--muted2);font-family:var(--font-display);font-size:13px;cursor:pointer;transition:all 0.15s;}
+  .hist-switch-btn:hover{color:var(--text);border-color:var(--border2);}
+  .hist-switch-btn.active{background:var(--surface2);color:var(--text);border-color:var(--border2);font-weight:500;}
+
+  .hist-month-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:1.5rem;}
+
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:1rem;}
+  .cal-header-cell{text-align:center;font-size:11px;font-family:var(--font-mono);color:var(--muted);padding:6px 0;text-transform:uppercase;}
+  .cal-cell{min-height:52px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);padding:6px;cursor:pointer;transition:all 0.15s;position:relative;}
+  .cal-cell:hover{border-color:var(--border2);background:var(--surface2);}
+  .cal-cell.empty{background:none;border-color:transparent;cursor:default;}
+  .cal-cell.selected{border-color:var(--green);background:var(--surface2);}
+  .cal-cell.today{border-color:var(--muted);}
+  .cal-day-num{font-size:13px;font-weight:500;color:var(--text);line-height:1;}
+  .cal-cell.empty .cal-day-num{color:transparent;}
+  .cal-dots{display:flex;gap:3px;flex-wrap:wrap;margin-top:5px;}
+  .cal-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+
+  .cal-detail-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1rem;animation:fadeIn 0.18s ease;}
+  .cal-detail-title{font-size:14px;font-weight:500;margin-bottom:10px;color:var(--muted2);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:0.06em;}
+
+  .hist-row{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:all 0.15s;}
+  .hist-row:hover{border-color:var(--border2);background:var(--surface2);}
+  .hist-month{font-size:15px;font-weight:500;}
+  .hist-stats{font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-top:3px;}
+  .hist-balance{font-size:15px;font-weight:700;font-family:var(--font-mono);}
+  .hist-balance.pos{color:var(--green);} .hist-balance.neg{color:var(--red);}
+
+  /* Supermercado */
+  .super-tab{padding:8px 18px;font-size:14px;cursor:pointer;border:none;background:none;color:var(--muted2);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s;font-family:var(--font-display);}
+  .super-tab:hover{color:var(--text);}
+  .super-tab.active{color:var(--text);border-bottom-color:var(--green);font-weight:500;}
+
+  .super-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:1.5rem;}
+  .super-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.1rem 1.25rem;cursor:pointer;transition:all 0.2s;border-top:3px solid transparent;}
+  .super-card:hover{transform:translateY(-2px);border-color:var(--border2);}
+  .super-card.selected{border-color:var(--border2);}
+  .super-card-name{font-size:14px;font-weight:700;margin-bottom:4px;}
+  .super-card-stats{font-size:11px;font-family:var(--font-mono);color:var(--muted);}
+  .super-card-total{font-size:16px;font-weight:700;font-family:var(--font-mono);margin-top:8px;}
+
+  .compra-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px 16px;margin-bottom:8px;transition:all 0.15s;}
+  .compra-row:hover{border-color:var(--border2);}
+
+  .back-btn{display:inline-flex;align-items:center;gap:8px;background:none;border:1px solid var(--border);border-radius:var(--radius);padding:7px 14px;color:var(--muted2);font-family:var(--font-display);font-size:13px;cursor:pointer;margin-bottom:1.5rem;transition:all 0.15s;}
+  .back-btn:hover{color:var(--text);border-color:var(--border2);}
+
+  .compra-detail-header{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem 1.5rem;margin-bottom:1.5rem;border-left:4px solid transparent;}
+  .compra-detail-meta{display:flex;gap:2rem;margin-top:6px;}
+  .compra-detail-meta span{font-size:12px;font-family:var(--font-mono);color:var(--muted);}
+  .compra-detail-total{font-size:24px;font-weight:700;margin-top:8px;}
+
+  .producto-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);}
+  .producto-row:last-child{border-bottom:none;}
+  .producto-info{flex:1;min-width:0;}
+  .producto-nombre{font-size:14px;color:var(--text);}
+  .producto-bar{margin-top:5px;height:3px;background:var(--surface2);border-radius:2px;overflow:hidden;}
+  .producto-bar-fill{height:100%;border-radius:2px;}
+  .producto-precio{font-size:14px;font-family:var(--font-mono);color:var(--text);flex-shrink:0;min-width:80px;text-align:right;}
+  .producto-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px;transition:all 0.15s;flex-shrink:0;}
+  .producto-del:hover{color:var(--red);background:var(--red-dim);}
+
+  .add-producto-row{display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+  .add-producto-row .form-input.precio-inp{width:130px;flex:none;}
+
+  .prod-form-wrap{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+  .prod-inputs-row{display:flex;gap:8px;margin-bottom:8px;}
+  .prod-inputs-row .form-input{flex:1;}
+  .prod-inputs-row .form-input.marca-inp{width:140px;flex:none;}
+  .prod-inputs-row .form-input.precio-inp{width:120px;flex:none;}
+  .prod-chips{display:flex;flex-wrap:wrap;gap:6px;min-height:0;margin-bottom:4px;}
+  .prod-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border2);font-size:12px;font-family:var(--font-mono);color:var(--text);cursor:pointer;transition:all 0.15s;animation:fadeIn 0.15s ease;}
+  .prod-chip:hover{background:var(--surface);border-color:var(--amber);color:var(--amber);}
+  .prod-chip-marca{font-size:11px;color:var(--muted);margin-left:2px;}
+  .prod-chip-super{font-size:10px;padding:1px 5px;border-radius:3px;background:var(--surface);margin-left:3px;}
+
+  .super-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+
+  .prod-peso-toggle{display:flex;align-items:center;gap:7px;margin-bottom:8px;cursor:pointer;user-select:none;width:fit-content;}
+  .prod-peso-toggle input[type=checkbox]{width:15px;height:15px;accent-color:var(--amber);cursor:pointer;}
+  .prod-peso-toggle span{font-size:12px;font-family:var(--font-mono);color:var(--muted2);}
+  .prod-peso-toggle:hover span{color:var(--text);}
+  .peso-badge{font-size:10px;font-family:var(--font-mono);padding:2px 6px;border-radius:3px;background:rgba(255,181,71,0.15);color:var(--amber);border:1px solid rgba(255,181,71,0.3);}
+
+  .modal-overlay{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);align-items:center;justify-content:center;}
+  .modal-overlay.open{display:flex;animation:fadeOverlay 0.15s ease;}
+  @keyframes fadeOverlay{from{opacity:0;}to{opacity:1;}}
+  .modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:1.75rem;width:100%;max-width:520px;margin:1rem;animation:slideUp 0.18s cubic-bezier(.4,0,.2,1);}
+  @keyframes slideUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;}
+  .modal-title{font-size:16px;font-weight:700;letter-spacing:-0.3px;}
+  .modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;line-height:1;padding:2px 6px;border-radius:4px;transition:all 0.15s;}
+  .modal-close:hover{color:var(--text);background:var(--surface2);}
+  .modal-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.25rem;}
+  .modal-footer{display:flex;gap:10px;margin-top:1.25rem;}
+  .modal-footer .btn{flex:1;width:auto;}
+
+  .empty{text-align:center;padding:3rem;color:var(--muted);font-family:var(--font-mono);font-size:13px;}
+  .page{display:none;} .page.active{display:block;}
+  ::-webkit-scrollbar{width:6px;} ::-webkit-scrollbar-track{background:var(--bg);} ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+  @media(max-width:900px){
+    /* Layout */
+    .layout{flex-direction:column;}
+    .main{margin-left:0;padding:1rem 1rem calc(80px + env(safe-area-inset-bottom));max-width:100%;}
+
+    /* Sidebar → bottom tab bar */
+    .sidebar{
+      width:100%;height:auto;position:fixed;bottom:0;left:0;right:0;top:auto;
+      flex-direction:row;padding:0;padding-bottom:env(safe-area-inset-bottom);
+      border-right:none;border-top:1px solid var(--border);
+      background:rgba(22,22,22,0.95);backdrop-filter:blur(20px);
+      z-index:50;justify-content:space-around;align-items:stretch;
+    }
+    .logo{display:none;}
+    .sidebar-footer{display:none;}
+    nav{display:flex;flex:1;justify-content:space-around;}
+    .nav-item{
+      flex:1;flex-direction:column;align-items:center;justify-content:center;
+      gap:4px;padding:10px 4px 8px;font-size:10px;
+      border-left:none;border-top:2px solid transparent;
+      min-width:0;text-align:center;
+    }
+    .nav-item.active{border-left-color:transparent;border-top-color:var(--green);background:none;color:var(--text);}
+    .nav-icon{width:20px;height:20px;opacity:1;}
+
+    /* Page title */
+    .page-title{font-size:22px;}
+    .page-header{margin-bottom:1.25rem;}
+
+    /* Metrics */
+    .metrics{grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:1.25rem;}
+    .metric-value{font-size:18px;}
+
+    /* Charts */
+    .charts-row{grid-template-columns:1fr;gap:12px;}
+
+    /* Forms */
+    .form-grid{grid-template-columns:1fr;}
+    .form-input,.form-select{font-size:16px;padding:12px;} /* 16px prevents iOS zoom */
+
+    /* Product form — stack vertically on mobile */
+    .prod-inputs-row{flex-wrap:wrap;gap:8px;}
+    .prod-inputs-row .form-input{min-width:0;}
+    .prod-inputs-row .form-input.marca-inp{width:calc(50% - 4px);flex:none;}
+    .prod-inputs-row .form-input[id=prod-presentacion]{width:calc(50% - 4px);flex:none;}
+    .prod-inputs-row .form-input[id=prod-cantidad]{width:80px;flex:none;}
+    .prod-inputs-row .form-input.precio-inp{flex:1;}
+    .prod-inputs-row .btn{width:100%;margin-top:4px;}
+
+    /* Super grid */
+    .super-grid{grid-template-columns:repeat(2,1fr);}
+
+    /* Calendar */
+    .cal-cell{min-height:44px;padding:5px 4px;}
+    .cal-day-num{font-size:12px;}
+    .cal-header-cell{font-size:10px;padding:4px 0;}
+    .hist-month-summary{grid-template-columns:repeat(3,1fr);gap:8px;}
+
+    /* Modal */
+    .modal{margin:0;border-radius:var(--radius-lg) var(--radius-lg) 0 0;position:fixed;bottom:0;left:0;right:0;max-width:100%;padding-bottom:calc(1.75rem + env(safe-area-inset-bottom));}
+    .modal-overlay.open{align-items:flex-end;}
+    .modal-form-grid{grid-template-columns:1fr;}
+
+    /* Analisis charts */
+    #analisis-resumen{grid-template-columns:repeat(3,1fr);gap:8px;}
+
+    /* Historial switcher */
+    .hist-switcher{gap:6px;}
+    .hist-switch-btn{font-size:12px;padding:5px 11px;}
+
+    /* Buttons */
+    .btn{font-size:14px;padding:13px 16px;}
+    .btn-sm{padding:8px 14px;font-size:12px;}
+    .back-btn{font-size:13px;}
+
+    /* Items */
+    .item-row{padding:11px 12px;}
+    .item-desc{font-size:14px;}
+
+    /* Super tab */
+    .super-tab{font-size:13px;padding:8px 14px;}
+  }
+
+  @media(max-width:400px){
+    .metrics{grid-template-columns:1fr 1fr;}
+    .super-grid{grid-template-columns:1fr 1fr;}
+    .nav-item{font-size:9px;}
+    #analisis-resumen{grid-template-columns:1fr 1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-title">Mis Finanzas</div>
+      <div class="logo-sub">panel personal</div>
+    </div>
+    <nav>
+      <div class="nav-item active" onclick="showPage('dashboard')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/>
+          <rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/>
+        </svg>Dashboard
+      </div>
+      <div class="nav-item" onclick="showPage('cargar')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="11"/><line x1="5" y1="8" x2="11" y2="8"/>
+        </svg>Cargar
+      </div>
+      <div class="nav-item" onclick="showPage('supermercado')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M1.5 2h1.8l2 6.5h6.5l1.7-4H4.5"/><circle cx="6" cy="13" r="1"/><circle cx="11" cy="13" r="1"/>
+        </svg>Supermercado
+      </div>
+      <div class="nav-item" onclick="showPage('historial')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="6.5"/><polyline points="8,4.5 8,8 10.5,10"/>
+        </svg>Historial
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="month-selector">
+        <button class="month-btn" onclick="changeMonth(-1)">&#8592;</button>
+        <span class="month-label" id="month-label"></span>
+        <button class="month-btn" onclick="changeMonth(1)">&#8594;</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page active">
+      <div class="page-header">
+        <div class="page-title" id="dash-title">Dashboard</div>
+        <div class="page-subtitle" id="dash-sub">resumen del mes</div>
+      </div>
+      <div class="metrics">
+        <div class="metric-card"><div class="metric-label">Ingresos</div><div class="metric-value green" id="m-ing">$0</div></div>
+        <div class="metric-card"><div class="metric-label">Gastos</div><div class="metric-value red" id="m-gas">$0</div></div>
+        <div class="metric-card"><div class="metric-label">Ahorro</div><div class="metric-value" id="m-aho">$0</div></div>
+        <div class="metric-card"><div class="metric-label">% ahorrado</div><div class="metric-value" id="m-pct">0%</div><div class="metric-sub" id="m-pct-sub"></div></div>
+      </div>
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="chart-card-title">por categoría</div>
+          <div class="donut-wrap">
+            <canvas id="donut-chart" style="max-width:180px;max-height:180px;"></canvas>
+            <div class="donut-center"><div class="donut-center-val" id="donut-center-val">$0</div><div class="donut-center-lbl">total gastos</div></div>
+          </div>
+          <div class="legend" id="donut-legend"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">últimos 6 meses</div>
+          <div class="bar-wrap"><canvas id="bar-chart"></canvas></div>
+        </div>
+      </div>
+      <div class="section-label">distribución de gastos</div>
+      <div id="cat-bars"></div>
+    </div>
+
+    <!-- CARGAR -->
+    <div id="page-cargar" class="page">
+      <div class="page-header">
+        <div class="page-title">Cargar movimiento</div>
+        <div class="page-subtitle" id="cargar-sub">este mes</div>
+      </div>
+      <div class="type-toggle">
+        <div class="toggle-btn active-g" id="toggle-gasto" onclick="setTipo('gasto')">— Gasto</div>
+        <div class="toggle-btn" id="toggle-ingreso" onclick="setTipo('ingreso')">+ Ingreso</div>
+      </div>
+      <div class="form-card">
+        <div class="form-grid" id="form-fields"></div>
+        <button class="btn btn-green" id="btn-add" onclick="addMovimiento()">Agregar</button>
+      </div>
+      <div class="section-label" id="list-section-label">movimientos del mes</div>
+      <div class="items-list" id="items-list"></div>
+    </div>
+
+    <!-- SUPERMERCADO -->
+    <div id="page-supermercado" class="page">
+
+      <!-- Sub-nav tabs -->
+      <div id="super-tabs" style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:1.5rem;">
+        <button class="super-tab active" onclick="showSuperTab('lista')">Compras</button>
+        <button class="super-tab" onclick="showSuperTab('analisis')">Análisis</button>
+      </div>
+
+      <!-- Vista lista -->
+      <div id="super-view-lista">
+        <div class="page-header" style="margin-bottom:1.25rem;">
+          <div class="page-title">Supermercado</div>
+          <div class="page-subtitle" id="super-sub">compras del mes</div>
+        </div>
+        <div class="super-grid" id="super-cards"></div>
+        <div class="super-toolbar">
+          <div class="section-label" id="super-list-label" style="margin-bottom:0;">todas las compras</div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost btn-sm" onclick="openEditSupersModal()">&#9998; Supermercados</button>
+            <button class="btn btn-green btn-sm" onclick="openNuevaCompraModal()">+ Nueva compra</button>
+          </div>
+        </div>
+        <div id="super-compras-list"></div>
+      </div>
+
+      <!-- Vista detalle -->
+      <div id="super-view-detalle" style="display:none;">
+        <button class="back-btn" onclick="volverASuper()">&#8592; Volver a supermercado</button>
+        <div class="compra-detail-header" id="detalle-header"></div>
+        <div class="section-label">productos de esta compra</div>
+        <div class="form-card">
+          <div id="detalle-productos-list"></div>
+          <div class="prod-form-wrap">
+            <div class="prod-chips" id="prod-chips"></div>
+            <label class="prod-peso-toggle">
+              <input type="checkbox" id="prod-peso-var" onchange="togglePesoVar()">
+              <span>Peso variable (ej: tomates, frutas, carne)</span>
+            </label>
+            <div class="prod-inputs-row">
+              <input class="form-input" id="prod-nombre" type="text" placeholder="Nombre" autocomplete="off" oninput="onProdNombreInput()">
+              <input class="form-input marca-inp" id="prod-marca" type="text" placeholder="Marca">
+              <input class="form-input" id="prod-presentacion" type="text" placeholder="Ej: 1L, 500g, x6" style="width:110px;flex:none;">
+              <input class="form-input" id="prod-cantidad" type="number" min="0.001" step="1" placeholder="Unid." style="width:90px;flex:none;">
+              <input class="form-input precio-inp" id="prod-precio" type="number" min="0" placeholder="Total $">
+              <button class="btn btn-green" style="width:auto;padding:10px 18px;" onclick="addProducto()">+ Agregar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vista análisis -->
+      <div id="super-view-analisis" style="display:none;">
+        <div class="page-header" style="margin-bottom:1.25rem;">
+          <div class="page-title">Análisis</div>
+          <div class="page-subtitle" id="analisis-sub">todos los meses con datos</div>
+        </div>
+
+        <!-- Resumen mensual -->
+        <div class="section-label">resumen del mes actual</div>
+        <div id="analisis-resumen" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:2rem;"></div>
+
+        <!-- Productos más frecuentes -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:2rem;">
+          <div class="chart-card">
+            <div class="chart-card-title">más comprados este mes (unidades)</div>
+            <div style="position:relative;height:220px;"><canvas id="chart-frecuentes"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-title">más caros (precio promedio)</div>
+            <div style="position:relative;height:220px;"><canvas id="chart-caros"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Peso variable -->
+        <div id="analisis-peso-section" style="margin-bottom:2rem;display:none;"></div>
+
+        <!-- Evolución de precios -->
+        <div class="chart-card" style="margin-bottom:2rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+            <div class="chart-card-title" style="margin-bottom:0;">evolución de precio</div>
+            <select class="form-select" id="sel-producto" style="width:auto;min-width:180px;font-size:13px;padding:6px 10px;" onchange="renderEvolucion()"></select>
+          </div>
+          <div style="position:relative;height:200px;"><canvas id="chart-evolucion"></canvas></div>
+          <div id="evolucion-tip" style="font-size:12px;font-family:var(--font-mono);color:var(--muted);margin-top:10px;"></div>
+        </div>
+
+        <!-- Comparativa supermercados -->
+        <div class="chart-card" style="margin-bottom:2rem;">
+          <div class="chart-card-title">ticket promedio por supermercado</div>
+          <div style="position:relative;height:200px;"><canvas id="chart-super-comp"></canvas></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- HISTORIAL -->
+    <div id="page-historial" class="page">
+      <div class="page-header">
+        <div class="page-title">Historial</div>
+        <div class="page-subtitle">seleccioná un mes para ver el calendario</div>
+      </div>
+
+      <!-- Selector mes/año -->
+      <div class="hist-switcher" id="hist-switcher"></div>
+
+      <!-- Resumen del mes seleccionado -->
+      <div class="hist-month-summary" id="hist-month-summary"></div>
+
+      <!-- Calendario -->
+      <div class="hist-cal-wrap" id="hist-cal-wrap"></div>
+
+      <!-- Detalle del día seleccionado -->
+      <div id="hist-day-detail"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Modal editar gasto/ingreso -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Editar</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" onclick="modalDelete()">Eliminar</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-green" onclick="modalSave()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nueva compra -->
+<div class="modal-overlay" id="modal-compra" onclick="closeCompraModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Nueva compra en supermercado</div>
+      <button class="modal-close" onclick="closeCompraModal()">×</button>
+    </div>
+    <div class="modal-form-grid">
+      <div class="form-group">
+        <label class="form-label">Supermercado</label>
+        <select class="form-select" id="nc-super"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Fecha</label>
+        <input class="form-input" id="nc-fecha" type="date">
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--muted);font-family:var(--font-mono);margin-bottom:1rem;">Después de crear la compra podés agregar los productos uno por uno con su precio.</p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeCompraModal()">Cancelar</button>
+      <button class="btn btn-green" onclick="crearCompra()">Crear y cargar productos &#8594;</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal gestión supermercados -->
+<div class="modal-overlay" id="modal-supers" onclick="closeSupersModal(event)">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <div class="modal-title">Supermercados</div>
+      <button class="modal-close" onclick="closeSupersModal()">×</button>
+    </div>
+    <div id="supers-list" style="margin-bottom:1.25rem;"></div>
+    <div style="border-top:1px solid var(--border);padding-top:1.25rem;">
+      <p class="form-label" style="margin-bottom:8px;">Agregar nuevo</p>
+      <div style="display:flex;gap:8px;">
+        <input class="form-input" id="ns-nombre" type="text" placeholder="Nombre del supermercado" style="flex:1;">
+        <button class="btn btn-green" style="width:auto;padding:10px 16px;" onclick="addSuper()">+</button>
+      </div>
+      <div id="ns-error" style="font-size:12px;color:var(--red);font-family:var(--font-mono);margin-top:6px;display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal confirmación -->
+<div class="modal-overlay" id="modal-confirm" onclick="closeConfirm(event)">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header">
+      <div class="modal-title" id="confirm-title">Confirmar</div>
+      <button class="modal-close" onclick="closeConfirm()">×</button>
+    </div>
+    <p id="confirm-msg" style="font-size:14px;color:var(--muted2);line-height:1.6;margin-bottom:1.5rem;"></p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancelar</button>
+      <button class="btn btn-danger" id="confirm-ok-btn" onclick="confirmOk()">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const CATS={'Salidas':'#ff5c5c','Delivery':'#ffb547','Transporte':'#4da6ff','Ropa':'#e879a0','Salud':'#a78bfa','Compra única':'#2dd4bf','Otros':'#666'};
+const PALETTE=['#4da6ff','#3ddc84','#ff5c5c','#a78bfa','#ffb547','#e879a0','#2dd4bf','#f97316','#a3e635','#fb7185'];
+const DEFAULT_SUPERS=[{nombre:'Disco',color:'#4da6ff'},{nombre:'Jumbo',color:'#3ddc84'},{nombre:'Coto',color:'#ff5c5c'},{nombre:'Carrefour',color:'#a78bfa'}];
+let supermercados=JSON.parse(localStorage.getItem('mf_supers')||JSON.stringify(DEFAULT_SUPERS));
+function superCol(nombre){const s=supermercados.find(x=>x.nombre===nombre);return s?s.color:'#888';}
+function saveSupers(){localStorage.setItem('mf_supers',JSON.stringify(supermercados));}
+
+let curMonth=new Date().getMonth(), curYear=new Date().getFullYear();
+let tipo='gasto';
+let gastos  =JSON.parse(localStorage.getItem('mf_gastos')  ||'[]');
+let ingresos=JSON.parse(localStorage.getItem('mf_ingresos')||'[]');
+let compras =JSON.parse(localStorage.getItem('mf_compras') ||'[]');
+let superTab='lista'; // 'lista' | 'analisis'
+let donutChart=null, barChart=null;
+let chartFrecuentes=null,chartCaros=null,chartEvolucion=null,chartSuperComp=null;
+
+function showSuperTab(tab){
+  superTab=tab;
+  document.querySelectorAll('.super-tab').forEach((t,i)=>t.classList.toggle('active',['lista','analisis'][i]===tab));
+  document.getElementById('super-tabs').style.display='flex';
+  document.getElementById('super-view-lista').style.display=   tab==='lista'?'':'none';
+  document.getElementById('super-view-detalle').style.display='none';
+  document.getElementById('super-view-analisis').style.display=tab==='analisis'?'':'none';
+  if(tab==='lista')   renderSuper();
+  if(tab==='analisis')renderAnalisis();
+}
+let modalState=null, detalleId=null, filtroSuper=null;
+
+function save(){
+  localStorage.setItem('mf_gastos',  JSON.stringify(gastos));
+  localStorage.setItem('mf_ingresos',JSON.stringify(ingresos));
+  localStorage.setItem('mf_compras', JSON.stringify(compras));
+}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+function fmt(n){return '$'+Math.round(Math.abs(n)).toLocaleString('es-AR');}
+function monthKey(y,m){return y+'-'+String(m+1).padStart(2,'0');}
+function getByMes(arr,y,m){return arr.filter(x=>{const d=new Date(x.fecha+'T12:00:00');return d.getFullYear()===y&&d.getMonth()===m;});}
+function superTotalMes(y,m){return getByMes(compras,y,m).reduce((a,c)=>a+c.productos.reduce((b,p)=>b+p.precio,0),0);}
+function todayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+// ── Nav ──────────────────────────────────────────────────────────────────────
+const PAGES=['dashboard','cargar','supermercado','historial'];
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item')[PAGES.indexOf(id)].classList.add('active');
+  if(id==='dashboard')   renderDashboard();
+  if(id==='cargar')      renderCargar();
+  if(id==='supermercado')renderSuper();
+  if(id==='historial')   renderHistorial();
+}
+function changeMonth(dir){
+  curMonth+=dir;
+  if(curMonth>11){curMonth=0;curYear++;}
+  if(curMonth<0){curMonth=11;curYear--;}
+  updateMonthLabel();
+  const a=document.querySelector('.page.active');
+  if(!a)return;
+  const id=a.id.replace('page-','');
+  if(id==='dashboard')   renderDashboard();
+  if(id==='cargar')      renderCargar();
+  if(id==='supermercado')renderSuper();
+}
+function updateMonthLabel(){document.getElementById('month-label').textContent=MONTHS[curMonth].slice(0,3)+' '+curYear;}
+
+// ── Dashboard ────────────────────────────────────────────────────────────────
+function renderDashboard(){
+  const mesG=getByMes(gastos,curYear,curMonth);
+  const mesI=getByMes(ingresos,curYear,curMonth);
+  const tSuper=superTotalMes(curYear,curMonth);
+  const tG=mesG.reduce((a,x)=>a+x.monto,0)+tSuper;
+  const tI=mesI.reduce((a,x)=>a+x.monto,0);
+  const aho=tI-tG, pct=tI>0?Math.round((aho/tI)*100):0;
+  const nCompras=getByMes(compras,curYear,curMonth).length;
+  document.getElementById('dash-title').textContent=MONTHS[curMonth]+' '+curYear;
+  document.getElementById('dash-sub').textContent=mesG.length+' gastos · '+nCompras+' compras super · '+mesI.length+' ingresos';
+  document.getElementById('m-ing').textContent=fmt(tI);
+  document.getElementById('m-gas').textContent=fmt(tG);
+  const aEl=document.getElementById('m-aho');
+  aEl.textContent=(aho>=0?'':'-')+fmt(aho); aEl.className='metric-value '+(aho>=0?'green':'red');
+  const pEl=document.getElementById('m-pct');
+  pEl.textContent=pct+'%'; pEl.className='metric-value '+(pct>=0?'green':'red');
+  document.getElementById('m-pct-sub').textContent=pct>=0?'del ingreso':'en deficit';
+
+  // Categorías: gastos normales + supermercado como categoría propia
+  const bycat={};Object.keys(CATS).forEach(c=>bycat[c]=0);
+  mesG.forEach(g=>{bycat[g.categoria]=(bycat[g.categoria]||0)+g.monto;});
+  if(tSuper>0) bycat['Supermercado']=tSuper;
+  const CATS_EXT={...CATS,'Supermercado':'#3ddc84'};
+  const ac=Object.keys(CATS_EXT).filter(c=>bycat[c]>0);
+  document.getElementById('donut-center-val').textContent=fmt(tG);
+
+  if(donutChart){donutChart.destroy();donutChart=null;}
+  if(ac.length>0){
+    donutChart=new Chart(document.getElementById('donut-chart').getContext('2d'),{type:'doughnut',data:{labels:ac,datasets:[{data:ac.map(c=>bycat[c]),backgroundColor:ac.map(c=>CATS_EXT[c]),borderColor:'#161616',borderWidth:3,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:true,cutout:'68%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+fmt(ctx.parsed)}}}}});
+  }
+  document.getElementById('donut-legend').innerHTML=ac.map(c=>`<div class="legend-item"><span class="legend-dot" style="background:${CATS_EXT[c]}"></span>${c}</div>`).join('');
+
+  if(barChart){barChart.destroy();barChart=null;}
+  const bm=[];for(let i=5;i>=0;i--){let m=curMonth-i,y=curYear;if(m<0){m+=12;y--;}bm.push({y,m,l:MONTHS[m].slice(0,3)});}
+  barChart=new Chart(document.getElementById('bar-chart').getContext('2d'),{type:'bar',data:{labels:bm.map(x=>x.l),datasets:[{label:'Ingresos',data:bm.map(x=>getByMes(ingresos,x.y,x.m).reduce((a,v)=>a+v.monto,0)),backgroundColor:'#1a3d2a',borderColor:'#3ddc84',borderWidth:1,borderRadius:4},{label:'Gastos',data:bm.map(x=>getByMes(gastos,x.y,x.m).reduce((a,v)=>a+v.monto,0)+superTotalMes(x.y,x.m)),backgroundColor:'#3d1a1a',borderColor:'#ff5c5c',borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>' '+ctx.dataset.label+': '+fmt(ctx.parsed.y)}}},scales:{x:{ticks:{color:'#666',font:{family:'DM Mono',size:11}},grid:{color:'#2a2a2a'}},y:{ticks:{color:'#666',font:{family:'DM Mono',size:11},callback:v=>'$'+(v/1000).toFixed(0)+'k'},grid:{color:'#2a2a2a'}}}}});
+
+  const bEl=document.getElementById('cat-bars');
+  if(ac.length===0){bEl.innerHTML='<div class="empty">Sin gastos este mes</div>';return;}
+  bEl.innerHTML=ac.map(c=>{const p=Math.round((bycat[c]/tG)*100);return`<div class="progress-row"><div class="progress-meta"><span class="progress-cat">${c}</span><span class="progress-val">${fmt(bycat[c])} · ${p}%</span></div><div class="progress-track"><div class="progress-fill" style="width:${p}%;background:${CATS_EXT[c]}"></div></div></div>`;}).join('');
+}
+
+// ── Cargar ───────────────────────────────────────────────────────────────────
+function setTipo(t){tipo=t;document.getElementById('toggle-gasto').className='toggle-btn '+(t==='gasto'?'active-g':'');document.getElementById('toggle-ingreso').className='toggle-btn '+(t==='ingreso'?'active-i':'');renderFormFields();renderItemsList();}
+function renderCargar(){document.getElementById('cargar-sub').textContent=MONTHS[curMonth]+' '+curYear;renderFormFields();renderItemsList();}
+function renderFormFields(){
+  const today=todayISO();
+  if(tipo==='gasto'){
+    document.getElementById('form-fields').innerHTML=`
+      <div class="form-group"><label class="form-label">Título</label><input class="form-input" id="f-titulo" type="text" placeholder="Ej: Cena con amigos, Remis..."></div>
+      <div class="form-group"><label class="form-label">Monto ($)</label><input class="form-input" id="f-monto" type="number" min="0" placeholder="0"></div>
+      <div class="form-group" style="grid-column:1/-1;"><label class="form-label">Descripción (opcional)</label><input class="form-input" id="f-desc" type="text" placeholder="Detalle adicional"></div>
+      <div class="form-group"><label class="form-label">Categoría</label><select class="form-select" id="f-cat">${Object.keys(CATS).map(c=>`<option>${c}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Fecha</label><input class="form-input" id="f-fecha" type="date" value="${today}"></div>`;
+    document.getElementById('btn-add').textContent='— Registrar gasto';
+  } else {
+    document.getElementById('form-fields').innerHTML=`<div class="form-group"><label class="form-label">Quién te transfirió</label><input class="form-input" id="f-origen" type="text" placeholder="Ej: Mamá, Papá..."></div><div class="form-group"><label class="form-label">Monto ($)</label><input class="form-input" id="f-monto" type="number" min="0" placeholder="0"></div><div class="form-group"><label class="form-label">Descripción (opcional)</label><input class="form-input" id="f-desc-i" type="text" placeholder="Ej: Mensualidad, regalo..."></div><div class="form-group"><label class="form-label">Fecha</label><input class="form-input" id="f-fecha" type="date" value="${today}"></div>`;
+    document.getElementById('btn-add').textContent='+ Registrar ingreso';
+  }
+}
+function renderItemsList(){
+  const mG=getByMes(gastos,curYear,curMonth),mI=getByMes(ingresos,curYear,curMonth);
+  const all=[...mG.map(x=>({...x,_t:'gasto'})),...mI.map(x=>({...x,_t:'ingreso'}))].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  document.getElementById('list-section-label').textContent=tipo==='gasto'?`${mG.length} gastos este mes`:`${mI.length} ingresos este mes`;
+  const shown=tipo==='gasto'?all.filter(x=>x._t==='gasto'):all.filter(x=>x._t==='ingreso');
+  const el=document.getElementById('items-list');
+  if(shown.length===0){el.innerHTML='<div class="empty">Sin registros</div>';return;}
+  el.innerHTML=shown.map(x=>{
+    const d=new Date(x.fecha+'T12:00:00'),fs=d.getDate()+'/'+(d.getMonth()+1);
+    if(x._t==='gasto'){
+      const subtitulo=x.desc?`<div class="item-meta" style="margin-top:1px;color:var(--muted)">${x.desc}</div>`:'';
+      return`<div class="item-row"><div class="item-dot" style="background:${CATS[x.categoria]||'#666'}"></div><div class="item-body"><div class="item-desc">${x.titulo||x.desc||''}</div><div class="item-meta">${x.categoria} · ${fs}</div>${x.titulo&&x.desc?`<div class="item-meta" style="color:var(--muted);margin-top:1px;">${x.desc}</div>`:''}</div><div class="item-amount expense">-${fmt(x.monto)}</div><div class="item-actions"><button class="item-btn edit" onclick="openModal('gasto','${x.id}')" title="Editar">✎</button><button class="item-btn del" onclick="delGasto('${x.id}')" title="Eliminar">×</button></div></div>`;
+    }
+    const desc=x.desc?' · '+x.desc:'';
+    return`<div class="item-row"><div class="item-dot" style="background:#3ddc84"></div><div class="item-body"><div class="item-desc">${x.origen}${desc}</div><div class="item-meta">ingreso · ${fs}</div></div><div class="item-amount income">+${fmt(x.monto)}</div><div class="item-actions"><button class="item-btn edit" onclick="openModal('ingreso','${x.id}')" title="Editar">✎</button><button class="item-btn del" onclick="delIngreso('${x.id}')" title="Eliminar">×</button></div></div>`;
+  }).join('');
+}
+function addMovimiento(){
+  const monto=parseFloat(document.getElementById('f-monto').value);
+  const fecha=document.getElementById('f-fecha').value;
+  if(isNaN(monto)||monto<=0||!fecha)return;
+  if(tipo==='gasto'){const titulo=document.getElementById('f-titulo').value.trim(),desc=document.getElementById('f-desc').value.trim(),cat=document.getElementById('f-cat').value;if(!titulo)return;gastos.push({id:uid(),titulo,desc,monto,categoria:cat,fecha});}
+  else{const origen=document.getElementById('f-origen').value.trim(),desc=document.getElementById('f-desc-i').value.trim();if(!origen)return;ingresos.push({id:uid(),origen,monto,desc,fecha});}
+  save();renderFormFields();renderItemsList();
+}
+function delGasto(id){gastos=gastos.filter(x=>x.id!==id);save();renderItemsList();}
+function delIngreso(id){ingresos=ingresos.filter(x=>x.id!==id);save();renderItemsList();}
+
+// ── Supermercado ─────────────────────────────────────────────────────────────
+function renderSuper(){
+  document.getElementById('super-tabs').style.display='flex';
+  document.getElementById('super-view-lista').style.display='';
+  document.getElementById('super-view-detalle').style.display='none';
+  document.getElementById('super-view-analisis').style.display='none';
+  superTab='lista';
+  document.querySelectorAll('.super-tab').forEach((t,i)=>t.classList.toggle('active',i===0));
+  document.getElementById('super-sub').textContent=MONTHS[curMonth]+' '+curYear;
+  const mesC=getByMes(compras,curYear,curMonth);
+
+  // Cards resumen por super
+  document.getElementById('super-cards').innerHTML=supermercados.map(s=>{
+    const sc=mesC.filter(c=>c.supermercado===s.nombre);
+    const total=sc.reduce((a,c)=>a+c.productos.reduce((b,p)=>b+p.precio,0),0);
+    const col=s.color;
+    const sel=filtroSuper===s.nombre;
+    return`<div class="super-card${sel?' selected':''}" style="border-top-color:${col};" onclick="toggleFiltro('${s.nombre}')">
+      <div class="super-card-name" style="color:${col}">${s.nombre}</div>
+      <div class="super-card-stats">${sc.length} compra${sc.length!==1?'s':''} este mes</div>
+      <div class="super-card-total" style="color:${col}">${fmt(total)}</div>
+    </div>`;
+  }).join('');
+
+  const lista=filtroSuper?mesC.filter(c=>c.supermercado===filtroSuper):mesC;
+  document.getElementById('super-list-label').textContent=filtroSuper?`compras en ${filtroSuper}`:'todas las compras';
+  renderComprasList(lista);
+}
+
+function toggleFiltro(s){filtroSuper=filtroSuper===s?null:s;renderSuper();}
+
+function renderComprasList(lista){
+  const el=document.getElementById('super-compras-list');
+  const sorted=[...lista].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  if(sorted.length===0){el.innerHTML='<div class="empty">Sin compras registradas. Hacé clic en "+ Nueva compra" para empezar.</div>';return;}
+  el.innerHTML=sorted.map(c=>{
+    const d=new Date(c.fecha+'T12:00:00');
+    const fs=d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
+    const total=c.productos.reduce((a,p)=>a+p.precio,0);
+    const col=superCol(c.supermercado);
+    return`<div class="compra-row">
+      <div style="flex:1;min-width:0;cursor:pointer;" onclick="abrirDetalle('${c.id}')">
+        <div style="font-size:14px;font-weight:600;color:${col};display:flex;align-items:center;gap:8px;">
+          ${c.supermercado}
+          <span style="font-size:11px;font-family:var(--font-mono);color:var(--muted);font-weight:400;">${fs}</span>
+        </div>
+        <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-top:3px;">${c.productos.length} producto${c.productos.length!==1?'s':''}</div>
+      </div>
+      <div style="font-size:15px;font-weight:700;font-family:var(--font-mono);color:${col};flex-shrink:0;">${fmt(total)}</div>
+      <div class="item-actions">
+        <button class="item-btn view" onclick="abrirDetalle('${c.id}')" title="Ver detalle">&#9654;</button>
+        <button class="item-btn del" onclick="event.stopPropagation();delCompra('${c.id}')" title="Eliminar compra">×</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function abrirDetalle(id){
+  detalleId=id;
+  document.getElementById('super-tabs').style.display='none';
+  document.getElementById('super-view-lista').style.display='none';
+  document.getElementById('super-view-detalle').style.display='';
+  document.getElementById('super-view-analisis').style.display='none';
+  renderDetalle();
+  document.getElementById('prod-nombre').focus();
+}
+
+function renderDetalle(){
+  const c=compras.find(x=>x.id===detalleId);
+  if(!c)return;
+  const d=new Date(c.fecha+'T12:00:00');
+  const fs=d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
+  const total=c.productos.reduce((a,p)=>a+p.precio,0);
+  const col=superCol(c.supermercado);
+
+  document.getElementById('detalle-header').style.borderLeftColor=col;
+  document.getElementById('detalle-header').innerHTML=`
+    <div style="font-size:20px;font-weight:700;color:${col}">${c.supermercado}</div>
+    <div class="compra-detail-meta"><span>Fecha: ${fs}</span><span>${c.productos.length} producto${c.productos.length!==1?'s':''}</span></div>
+    <div class="compra-detail-total" style="color:${col}">${fmt(total)}</div>`;
+
+  const listEl=document.getElementById('detalle-productos-list');
+  if(c.productos.length===0){
+    listEl.innerHTML='<div style="color:var(--muted);font-family:var(--font-mono);font-size:13px;padding:0.5rem 0 1rem;">Agregá productos abajo.</div>';
+    return;
+  }
+  const sorted=[...c.productos].sort((a,b)=>b.precio-a.precio);
+  const maxP=sorted[0].precio||1;
+  listEl.innerHTML=sorted.map(p=>{
+    const cant=p.cantidad||1;
+    let cantLabel='';
+    if(p.pesoVar){
+      const kgStr=Number.isInteger(cant)?cant+'kg':cant.toFixed(3).replace(/\.?0+$/,'')+'kg';
+      const pxkg=Math.round(p.precio/cant);
+      cantLabel=`<span style="font-size:11px;font-family:var(--font-mono);color:var(--muted);">${kgStr} · ${fmt(pxkg)}/kg</span>`;
+    } else {
+      cantLabel=cant>1?`<span style="font-size:11px;font-family:var(--font-mono);color:var(--muted);">x${cant} · ${fmt(Math.round(p.precio/cant))}c/u</span>`:'';
+    }
+    const presLabel=p.presentacion?`<span style="font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--surface2);padding:1px 6px;border-radius:3px;">${p.presentacion}</span>`:'';
+    const pesoLabel=p.pesoVar?`<span class="peso-badge">~kg</span>`:'';
+    return`<div class="producto-row">
+      <div class="producto-info">
+        <div class="producto-nombre" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          ${p.nombre}
+          ${p.marca?`<span style="font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--surface2);padding:1px 6px;border-radius:3px;">${p.marca}</span>`:''}
+          ${presLabel}${pesoLabel}${cantLabel}
+        </div>
+        <div class="producto-bar"><div class="producto-bar-fill" style="width:${Math.round((p.precio/maxP)*100)}%;background:${col};"></div></div>
+      </div>
+      <div class="producto-precio">${fmt(p.precio)}</div>
+      <button class="producto-del" onclick="delProducto('${p.id}')">×</button>
+    </div>`;
+  }).join('');
+}
+
+function togglePesoVar(){
+  const isPeso=document.getElementById('prod-peso-var').checked;
+  const cantEl=document.getElementById('prod-cantidad');
+  const presEl=document.getElementById('prod-presentacion');
+  if(isPeso){
+    cantEl.placeholder='kg';
+    cantEl.step='0.001';
+    cantEl.min='0.001';
+    presEl.placeholder='Variedad (ej: cherry)';
+  } else {
+    cantEl.placeholder='Unid.';
+    cantEl.step='1';
+    cantEl.min='1';
+    presEl.placeholder='Ej: 1L, 500g, x6';
+  }
+}
+
+function addProducto(){
+  const nombre=document.getElementById('prod-nombre').value.trim();
+  const marca=document.getElementById('prod-marca').value.trim();
+  const presentacion=document.getElementById('prod-presentacion').value.trim();
+  const pesoVar=document.getElementById('prod-peso-var').checked;
+  const cantRaw=document.getElementById('prod-cantidad').value;
+  const cantidad=pesoVar?parseFloat(cantRaw):parseInt(cantRaw);
+  const precio=parseFloat(document.getElementById('prod-precio').value);
+  if(!nombre||!marca||isNaN(precio)||precio<0)return;
+  if(pesoVar&&(isNaN(cantidad)||cantidad<=0))return;
+  if(!pesoVar&&(isNaN(cantidad)||cantidad<1))return;
+  const c=compras.find(x=>x.id===detalleId);
+  if(!c)return;
+  c.productos.push({id:uid(),nombre,marca,presentacion,cantidad,pesoVar,precio});
+  save();
+  document.getElementById('prod-nombre').value='';
+  document.getElementById('prod-marca').value='';
+  document.getElementById('prod-presentacion').value='';
+  document.getElementById('prod-cantidad').value='';
+  document.getElementById('prod-precio').value='';
+  document.getElementById('prod-peso-var').checked=false;
+  document.getElementById('prod-chips').innerHTML='';
+  togglePesoVar();
+  document.getElementById('prod-nombre').focus();
+  renderDetalle();
+}
+
+// Enter en precio agrega producto
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&detalleId&&['prod-nombre','prod-marca','prod-presentacion','prod-cantidad','prod-precio'].includes(document.activeElement.id))addProducto();
+});
+
+// ── Sugerencias de productos ─────────────────────────────────────────────────
+function getProductosCatalogo(){
+  // Todos los productos únicos por nombre+marca de compras anteriores (excluye la compra actual)
+  const seen=new Map();
+  compras.forEach(c=>{
+    if(c.id===detalleId)return; // excluir compra actual
+    c.productos.forEach(p=>{
+      const key=(p.nombre+'|||'+(p.marca||'')).toLowerCase();
+      if(!seen.has(key)){
+        seen.set(key,{nombre:p.nombre,marca:p.marca||'',presentacion:p.presentacion||'',pesoVar:!!p.pesoVar,supermercado:c.supermercado,precio:p.precio});
+      }
+    });
+  });
+  return Array.from(seen.values());
+}
+
+function fuzzyMatch(query,target){
+  // Retorna true si todos los caracteres del query aparecen en orden en target
+  query=query.toLowerCase(); target=target.toLowerCase();
+  let qi=0;
+  for(let i=0;i<target.length&&qi<query.length;i++){
+    if(target[i]===query[qi])qi++;
+  }
+  return qi===query.length;
+}
+
+function scoreMatch(query,target){
+  query=query.toLowerCase(); target=target.toLowerCase();
+  if(target.startsWith(query))return 3;
+  if(target.includes(query))return 2;
+  if(fuzzyMatch(query,target))return 1;
+  return 0;
+}
+
+function onProdNombreInput(){
+  const q=document.getElementById('prod-nombre').value.trim();
+  const chipsEl=document.getElementById('prod-chips');
+  if(q.length<2){chipsEl.innerHTML='';return;}
+  const catalogo=getProductosCatalogo();
+  const matches=catalogo
+    .map(p=>({...p,score:scoreMatch(q,p.nombre+(p.marca?' '+p.marca:''))}))
+    .filter(p=>p.score>0)
+    .sort((a,b)=>b.score-a.score)
+    .slice(0,6);
+  if(matches.length===0){chipsEl.innerHTML='';return;}
+  const col=superCol(compras.find(x=>x.id===detalleId)?.supermercado||'');
+  chipsEl.innerHTML=matches.map((p,i)=>{
+    const marcaHtml=p.marca?`<span class="prod-chip-marca">${p.marca}</span>`:'';
+    const presHtml=p.presentacion?`<span class="prod-chip-marca">${p.presentacion}</span>`:'';
+    const pesoHtml=p.pesoVar?`<span class="peso-badge">~kg</span>`:'';
+    const superCol2=superCol(p.supermercado);
+    return`<div class="prod-chip" onclick="selectChip(${i})" data-nombre="${p.nombre.replace(/"/g,'&quot;')}" data-marca="${(p.marca||'').replace(/"/g,'&quot;')}" data-presentacion="${(p.presentacion||'').replace(/"/g,'&quot;')}" data-pesov="${p.pesoVar?'1':''}">
+      ${p.nombre}${marcaHtml}${presHtml}${pesoHtml}
+      <span class="prod-chip-super" style="color:${superCol2};background:${superCol2}18;">${p.supermercado}</span>
+    </div>`;
+  }).join('');
+}
+
+function selectChip(i){
+  const chips=document.querySelectorAll('.prod-chip');
+  if(!chips[i])return;
+  document.getElementById('prod-nombre').value=chips[i].dataset.nombre;
+  document.getElementById('prod-marca').value=chips[i].dataset.marca;
+  document.getElementById('prod-presentacion').value=chips[i].dataset.presentacion||'';
+  const isPeso=chips[i].dataset.pesov==='1';
+  document.getElementById('prod-peso-var').checked=isPeso;
+  togglePesoVar();
+  document.getElementById('prod-chips').innerHTML='';
+  document.getElementById('prod-cantidad').focus();
+}
+
+function delProducto(pid){
+  const c=compras.find(x=>x.id===detalleId);if(!c)return;
+  c.productos=c.productos.filter(p=>p.id!==pid);
+  save();renderDetalle();
+}
+let confirmCallback=null;
+function showConfirm(title,msg,onOk){
+  confirmCallback=onOk;
+  document.getElementById('confirm-title').textContent=title;
+  document.getElementById('confirm-msg').textContent=msg;
+  document.getElementById('modal-confirm').classList.add('open');
+}
+function closeConfirm(e){
+  if(e&&e.target!==document.getElementById('modal-confirm'))return;
+  document.getElementById('modal-confirm').classList.remove('open');
+  confirmCallback=null;
+}
+function confirmOk(){
+  document.getElementById('modal-confirm').classList.remove('open');
+  if(confirmCallback)confirmCallback();
+  confirmCallback=null;
+}
+
+function delCompra(id){
+  const c=compras.find(x=>x.id===id);
+  if(!c)return;
+  const d=new Date(c.fecha+'T12:00:00');
+  const fs=d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
+  showConfirm(
+    'Eliminar compra',
+    `¿Eliminás la compra en ${c.supermercado} del ${fs}? Se borrarán los ${c.productos.length} producto${c.productos.length!==1?'s':''} registrados.`,
+    ()=>{compras=compras.filter(x=>x.id!==id);save();renderSuper();}
+  );
+}
+function volverASuper(){detalleId=null;renderSuper();}
+
+function openNuevaCompraModal(){
+  document.getElementById('nc-fecha').value=todayISO();
+  document.getElementById('nc-super').innerHTML=supermercados.map(s=>`<option>${s.nombre}</option>`).join('');
+  document.getElementById('modal-compra').classList.add('open');
+}
+function closeCompraModal(e){
+  if(e&&e.target!==document.getElementById('modal-compra'))return;
+  document.getElementById('modal-compra').classList.remove('open');
+}
+function crearCompra(){
+  const sup=document.getElementById('nc-super').value;
+  const fecha=document.getElementById('nc-fecha').value;
+  if(!fecha)return;
+  const nueva={id:uid(),supermercado:sup,fecha,productos:[]};
+  compras.push(nueva);save();
+  document.getElementById('modal-compra').classList.remove('open');
+  abrirDetalle(nueva.id);
+}
+
+// ── Análisis supermercado ────────────────────────────────────────────────────
+function getAllProductos(){
+  const rows=[];
+  compras.forEach(c=>{
+    const d=new Date(c.fecha+'T12:00:00');
+    c.productos.forEach(p=>{
+      const nombreOrig=p.nombre.trim();
+      const marcaOrig=(p.marca||'').trim();
+      const display=marcaOrig?`${nombreOrig} · ${marcaOrig}`:nombreOrig;
+      rows.push({nombre:(nombreOrig+(marcaOrig?' '+marcaOrig:'')).toLowerCase(),nombreOrig:display,precio:p.precio,cantidad:p.cantidad||1,pesoVar:!!p.pesoVar,supermercado:c.supermercado,fecha:c.fecha,mes:d.getMonth(),year:d.getFullYear()});
+    });
+  });
+  return rows;
+}
+
+function renderAnalisis(){
+  const todos=getAllProductos();
+  const mesC=getByMes(compras,curYear,curMonth);
+
+  document.getElementById('analisis-sub').textContent='datos de todas tus compras';
+
+  // ── Resumen mes actual ──
+  const mesProds=todos.filter(x=>x.mes===curMonth&&x.year===curYear);
+  const ticketPromedio=mesC.length>0?(mesC.reduce((a,c)=>a+c.productos.reduce((b,p)=>b+p.precio,0),0)/mesC.length):0;
+  const prodCount=mesProds.length;
+  const totalMes=mesProds.reduce((a,x)=>a+x.precio,0);
+  document.getElementById('analisis-resumen').innerHTML=`
+    <div class="metric-card"><div class="metric-label">Ticket promedio</div><div class="metric-value" style="color:var(--amber)">${fmt(ticketPromedio)}</div><div class="metric-sub">${mesC.length} compra${mesC.length!==1?'s':''} este mes</div></div>
+    <div class="metric-card"><div class="metric-label">Productos comprados</div><div class="metric-value" style="color:var(--blue)">${prodCount}</div><div class="metric-sub">este mes</div></div>
+    <div class="metric-card"><div class="metric-label">Gasto super este mes</div><div class="metric-value" style="color:var(--green)">${fmt(totalMes)}</div></div>`;
+
+  // ── Unidades / kg comprados este mes ──
+  const freq={};
+  todos.filter(x=>x.mes===curMonth&&x.year===curYear).forEach(x=>{freq[x.nombreOrig]=(freq[x.nombreOrig]||0)+x.cantidad;});
+  const topFrec=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  // Detect which are peso variable for tooltip
+  const pesoVarSet=new Set(todos.filter(x=>x.pesoVar).map(x=>x.nombreOrig));
+
+  if(chartFrecuentes){chartFrecuentes.destroy();chartFrecuentes=null;}
+  if(topFrec.length>0){
+    chartFrecuentes=new Chart(document.getElementById('chart-frecuentes').getContext('2d'),{
+      type:'bar',
+      data:{labels:topFrec.map(x=>x[0]),datasets:[{data:topFrec.map(x=>parseFloat(x[1].toFixed(3))),backgroundColor:'#1a3060',borderColor:'#4da6ff',borderWidth:1,borderRadius:4}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>{const n=topFrec[ctx.dataIndex][0];return pesoVarSet.has(n)?` ${ctx.parsed.x} kg`:` ${ctx.parsed.x} unidad${ctx.parsed.x!==1?'es':''}`;
+      }}}},scales:{x:{ticks:{color:'#666',font:{family:'DM Mono',size:10}},grid:{color:'#2a2a2a'}},y:{ticks:{color:'#888',font:{family:'DM Mono',size:10}},grid:{display:false}}}}
+    });
+  }
+
+  // ── Peso variable: promedio kg por compra (histórico) ──
+  const pesoProds={};
+  todos.filter(x=>x.pesoVar).forEach(x=>{
+    if(!pesoProds[x.nombreOrig])pesoProds[x.nombreOrig]={totalKg:0,count:0,totalPrecio:0};
+    pesoProds[x.nombreOrig].totalKg+=x.cantidad;
+    pesoProds[x.nombreOrig].count+=1;
+    pesoProds[x.nombreOrig].totalPrecio+=x.precio;
+  });
+  const pesoList=Object.entries(pesoProds).sort((a,b)=>b[1].count-a[1].count);
+  const pesoSection=document.getElementById('analisis-peso-section');
+  if(pesoList.length>0){
+    pesoSection.style.display='';
+    pesoSection.innerHTML=`<div class="section-label" style="margin-top:0.5rem;">peso variable — promedios históricos</div>
+      <div class="chart-card">
+        ${pesoList.map(([n,d])=>{
+          const avgKg=(d.totalKg/d.count).toFixed(3).replace(/\.?0+$/,'');
+          const avgPrecio=Math.round(d.totalPrecio/d.totalKg);
+          return`<div class="progress-row">
+            <div class="progress-meta">
+              <span class="progress-cat">${n} <span class="peso-badge">~kg</span></span>
+              <span class="progress-val">${avgKg} kg promedio · ${fmt(avgPrecio)}/kg · ${d.count} compra${d.count!==1?'s':''}</span>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+  } else {
+    pesoSection.style.display='none';
+  }
+
+  // ── Productos más caros (precio promedio) ──
+  const preciosProm={};
+  const preciosCount={};
+  todos.forEach(x=>{
+    preciosProm[x.nombreOrig]=(preciosProm[x.nombreOrig]||0)+x.precio;
+    preciosCount[x.nombreOrig]=(preciosCount[x.nombreOrig]||0)+1;
+  });
+  const topCaros=Object.keys(preciosProm)
+    .map(n=>({n,avg:preciosProm[n]/preciosCount[n]}))
+    .sort((a,b)=>b.avg-a.avg).slice(0,8);
+
+  if(chartCaros){chartCaros.destroy();chartCaros=null;}
+  if(topCaros.length>0){
+    chartCaros=new Chart(document.getElementById('chart-caros').getContext('2d'),{
+      type:'bar',
+      data:{labels:topCaros.map(x=>x.n),datasets:[{data:topCaros.map(x=>Math.round(x.avg)),backgroundColor:'#3d1a1a',borderColor:'#ff5c5c',borderWidth:1,borderRadius:4}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` $${ctx.parsed.x.toLocaleString('es-AR')}`}}},scales:{x:{ticks:{color:'#666',font:{family:'DM Mono',size:10},callback:v=>'$'+(v/1000).toFixed(0)+'k'},grid:{color:'#2a2a2a'}},y:{ticks:{color:'#888',font:{family:'DM Mono',size:10}},grid:{display:false}}}}
+    });
+  }
+
+  // ── Selector de productos para evolución ──
+  const productosUnicos=Object.keys(preciosProm).sort();
+  const sel=document.getElementById('sel-producto');
+  const prev=sel.value;
+  sel.innerHTML=productosUnicos.length===0
+    ?'<option value="">Sin datos aún</option>'
+    :productosUnicos.map(n=>`<option value="${n}"${n===prev?' selected':''}>${n}</option>`).join('');
+  renderEvolucion();
+
+  // ── Ticket promedio por supermercado ──
+  const superTickets={};
+  const superCounts={};
+  compras.forEach(c=>{
+    const t=c.productos.reduce((a,p)=>a+p.precio,0);
+    if(c.productos.length>0){
+      superTickets[c.supermercado]=(superTickets[c.supermercado]||0)+t;
+      superCounts[c.supermercado]=(superCounts[c.supermercado]||0)+1;
+    }
+  });
+  const superNames=Object.keys(superTickets).sort((a,b)=>(superTickets[b]/superCounts[b])-(superTickets[a]/superCounts[a]));
+  const superAvgs=superNames.map(s=>Math.round(superTickets[s]/superCounts[s]));
+
+  if(chartSuperComp){chartSuperComp.destroy();chartSuperComp=null;}
+  if(superNames.length>0){
+    chartSuperComp=new Chart(document.getElementById('chart-super-comp').getContext('2d'),{
+      type:'bar',
+      data:{labels:superNames,datasets:[{data:superAvgs,backgroundColor:superNames.map(s=>superCol(s)+'33'),borderColor:superNames.map(s=>superCol(s)),borderWidth:1,borderRadius:6}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` Promedio: $${ctx.parsed.y.toLocaleString('es-AR')}`}}},scales:{x:{ticks:{color:'#888',font:{family:'DM Mono',size:11}},grid:{display:false}},y:{ticks:{color:'#666',font:{family:'DM Mono',size:11},callback:v=>'$'+(v/1000).toFixed(0)+'k'},grid:{color:'#2a2a2a'}}}}
+    });
+  }
+}
+
+function renderEvolucion(){
+  const nombre=document.getElementById('sel-producto').value.trim().toLowerCase();
+  if(!nombre){if(chartEvolucion){chartEvolucion.destroy();chartEvolucion=null;}return;}
+
+  const todos=getAllProductos().filter(x=>x.nombre===nombre);
+  if(todos.length===0)return;
+
+  // Agrupar por mes: precio promedio
+  const byMes={};
+  todos.forEach(x=>{
+    const k=monthKey(x.year,x.mes);
+    if(!byMes[k])byMes[k]={sum:0,count:0,year:x.year,mes:x.mes};
+    byMes[k].sum+=x.precio; byMes[k].count++;
+  });
+  const keys=Object.keys(byMes).sort();
+  const labels=keys.map(k=>{const{year,mes}=byMes[k];return MONTHS[mes].slice(0,3)+' '+String(year).slice(2);});
+  const avgs=keys.map(k=>Math.round(byMes[k].sum/byMes[k].count));
+
+  // Alerta de inflación
+  const tip=document.getElementById('evolucion-tip');
+  if(avgs.length>=2){
+    const first=avgs[0],last=avgs[avgs.length-1];
+    const pct=Math.round(((last-first)/first)*100);
+    const signo=pct>=0?'+':'';
+    const col=pct>20?'var(--red)':pct>0?'var(--amber)':'var(--green)';
+    tip.innerHTML=`<span style="color:${col}">Variación total: ${signo}${pct}%</span> · de ${fmt(first)} a ${fmt(last)}`;
+  } else {
+    tip.textContent='Solo un dato disponible. Seguí registrando para ver la evolución.';
+  }
+
+  const nomOrig=todos[0].nombreOrig;
+  if(chartEvolucion){chartEvolucion.destroy();chartEvolucion=null;}
+  chartEvolucion=new Chart(document.getElementById('chart-evolucion').getContext('2d'),{
+    type:'line',
+    data:{labels,datasets:[{label:nomOrig,data:avgs,borderColor:'#ffb547',backgroundColor:'rgba(255,181,71,0.08)',borderWidth:2,pointBackgroundColor:'#ffb547',pointRadius:5,pointHoverRadius:7,tension:0.3,fill:true}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${fmt(ctx.parsed.y)}`}}},scales:{x:{ticks:{color:'#888',font:{family:'DM Mono',size:11}},grid:{color:'#2a2a2a'}},y:{ticks:{color:'#666',font:{family:'DM Mono',size:11},callback:v=>'$'+(v/1000).toFixed(1)+'k'},grid:{color:'#2a2a2a'}}}}
+  });
+}
+
+// ── Historial ────────────────────────────────────────────────────────────────
+let histSelYear=curYear, histSelMonth=curMonth, histSelDay=null;
+
+function renderHistorial(){
+  // Collect all months that have any data
+  const seen=new Map();
+  [...gastos,...ingresos,...compras].forEach(x=>{
+    const d=new Date(x.fecha+'T12:00:00');
+    const k=monthKey(d.getFullYear(),d.getMonth());
+    if(!seen.has(k)) seen.set(k,{y:d.getFullYear(),m:d.getMonth()});
+  });
+  const keys=[...seen.keys()].sort().reverse();
+
+  if(keys.length===0){
+    document.getElementById('hist-switcher').innerHTML='';
+    document.getElementById('hist-month-summary').innerHTML='';
+    document.getElementById('hist-cal-wrap').innerHTML='<div class="empty">Sin movimientos registrados aún.</div>';
+    document.getElementById('hist-day-detail').innerHTML='';
+    return;
+  }
+
+  // Default to most recent month if current selection has no data
+  if(!seen.has(monthKey(histSelYear,histSelMonth))){
+    const first=seen.get(keys[0]);
+    histSelYear=first.y; histSelMonth=first.m;
+  }
+
+  // Switcher pills
+  document.getElementById('hist-switcher').innerHTML=keys.map(k=>{
+    const{y,m}=seen.get(k);
+    const active=k===monthKey(histSelYear,histSelMonth);
+    return`<button class="hist-switch-btn${active?' active':''}" onclick="selectHistMonth(${y},${m})">${MONTHS[m].slice(0,3)} ${y}</button>`;
+  }).join('');
+
+  renderHistCalendar();
+}
+
+function selectHistMonth(y,m){
+  histSelYear=y; histSelMonth=m; histSelDay=null;
+  renderHistorial();
+}
+
+function renderHistCalendar(){
+  const y=histSelYear, m=histSelMonth;
+
+  // Summary metrics
+  const tG=getByMes(gastos,y,m).reduce((a,x)=>a+x.monto,0)+superTotalMes(y,m);
+  const tI=getByMes(ingresos,y,m).reduce((a,x)=>a+x.monto,0);
+  const aho=tI-tG;
+  const ahoCol=aho>=0?'var(--green)':'var(--red)';
+  document.getElementById('hist-month-summary').innerHTML=`
+    <div class="metric-card"><div class="metric-label">Ingresos</div><div class="metric-value green">${fmt(tI)}</div></div>
+    <div class="metric-card"><div class="metric-label">Gastos</div><div class="metric-value red">${fmt(tG)}</div></div>
+    <div class="metric-card"><div class="metric-label">Ahorro</div><div class="metric-value" style="color:${ahoCol}">${aho>=0?'':'-'}${fmt(aho)}</div></div>`;
+
+  // Build map: day → {gastos, ingresos, compras}
+  const byDay={};
+  const addDay=(day,type,item)=>{
+    if(!byDay[day])byDay[day]={gastos:[],ingresos:[],compras:[]};
+    byDay[day][type].push(item);
+  };
+  getByMes(gastos,y,m).forEach(x=>{const d=new Date(x.fecha+'T12:00:00');addDay(d.getDate(),'gastos',x);});
+  getByMes(ingresos,y,m).forEach(x=>{const d=new Date(x.fecha+'T12:00:00');addDay(d.getDate(),'ingresos',x);});
+  getByMes(compras,y,m).forEach(x=>{const d=new Date(x.fecha+'T12:00:00');addDay(d.getDate(),'compras',x);});
+
+  const firstDay=new Date(y,m,1).getDay(); // 0=Sun
+  const startOffset=(firstDay+6)%7; // Mon-based
+  const daysInMonth=new Date(y,m+1,0).getDate();
+  const today=new Date();
+  const isCurrentMonth=today.getFullYear()===y&&today.getMonth()===m;
+
+  const DAYS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  let html=`<div class="cal-grid">`;
+  DAYS.forEach(d=>{html+=`<div class="cal-header-cell">${d}</div>`;});
+
+  // Empty cells before first day
+  for(let i=0;i<startOffset;i++) html+=`<div class="cal-cell empty"><div class="cal-day-num"></div></div>`;
+
+  for(let day=1;day<=daysInMonth;day++){
+    const data=byDay[day]||{gastos:[],ingresos:[],compras:[]};
+    const hasG=data.gastos.length>0, hasI=data.ingresos.length>0, hasC=data.compras.length>0;
+    const isToday=isCurrentMonth&&today.getDate()===day;
+    const isSel=histSelDay===day;
+    const cls=['cal-cell',isSel?'selected':'',isToday?'today':''].filter(Boolean).join(' ');
+    const dots=(hasG?`<div class="cal-dot" style="background:var(--red)"></div>`:'')
+              +(hasI?`<div class="cal-dot" style="background:var(--green)"></div>`:'')
+              +(hasC?`<div class="cal-dot" style="background:var(--amber)"></div>`:'');
+    html+=`<div class="${cls}" onclick="selectHistDay(${day})">
+      <div class="cal-day-num">${day}</div>
+      ${dots?`<div class="cal-dots">${dots}</div>`:''}
+    </div>`;
+  }
+  html+='</div>';
+
+  // Legend
+  html+=`<div style="display:flex;gap:14px;margin-bottom:1.5rem;">
+    <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--font-mono);color:var(--muted2);"><span style="width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block;"></span>Gastos</span>
+    <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--font-mono);color:var(--muted2);"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;"></span>Ingresos</span>
+    <span style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--font-mono);color:var(--muted2);"><span style="width:8px;height:8px;border-radius:50%;background:var(--amber);display:inline-block;"></span>Supermercado</span>
+  </div>`;
+
+  document.getElementById('hist-cal-wrap').innerHTML=html;
+
+  // Render selected day if any
+  if(histSelDay) renderHistDayDetail(histSelDay,byDay[histSelDay]||{gastos:[],ingresos:[],compras:[]});
+  else document.getElementById('hist-day-detail').innerHTML='';
+}
+
+function selectHistDay(day){
+  histSelDay=histSelDay===day?null:day;
+  renderHistCalendar();
+}
+
+function renderHistDayDetail(day,data){
+  const el=document.getElementById('hist-day-detail');
+  const parts=[];
+
+  if(data.gastos.length>0){
+    const rows=data.gastos.map(g=>`
+      <div class="item-row" style="margin-bottom:6px;">
+        <div class="item-dot" style="background:${CATS[g.categoria]||CATS_EXT&&CATS_EXT[g.categoria]||'#666'}"></div>
+        <div class="item-body"><div class="item-desc">${g.titulo||g.desc||''}</div><div class="item-meta">${g.categoria}${g.desc&&g.titulo?' · '+g.desc:''}</div></div>
+        <div class="item-amount expense">-${fmt(g.monto)}</div>
+      </div>`).join('');
+    parts.push(`<div class="cal-detail-row"><div class="cal-detail-title" style="color:var(--red);">Gastos</div>${rows}</div>`);
+  }
+
+  if(data.ingresos.length>0){
+    const rows=data.ingresos.map(i=>`
+      <div class="item-row" style="margin-bottom:6px;">
+        <div class="item-dot" style="background:var(--green)"></div>
+        <div class="item-body"><div class="item-desc">${i.origen}</div><div class="item-meta">${i.desc||'ingreso'}</div></div>
+        <div class="item-amount income">+${fmt(i.monto)}</div>
+      </div>`).join('');
+    parts.push(`<div class="cal-detail-row"><div class="cal-detail-title" style="color:var(--green);">Ingresos</div>${rows}</div>`);
+  }
+
+  if(data.compras.length>0){
+    const rows=data.compras.map(c=>{
+      const total=c.productos.reduce((a,p)=>a+p.precio,0);
+      const col=superCol(c.supermercado);
+      return`<div class="item-row" style="margin-bottom:6px;">
+        <div class="item-dot" style="background:${col}"></div>
+        <div class="item-body"><div class="item-desc" style="color:${col}">${c.supermercado}</div><div class="item-meta">${c.productos.length} producto${c.productos.length!==1?'s':''}</div></div>
+        <div class="item-amount" style="color:${col}">-${fmt(total)}</div>
+      </div>`;
+    }).join('');
+    parts.push(`<div class="cal-detail-row"><div class="cal-detail-title" style="color:var(--amber);">Supermercado</div>${rows}</div>`);
+  }
+
+  if(parts.length===0){
+    el.innerHTML=`<div class="cal-detail-row"><p style="color:var(--muted);font-family:var(--font-mono);font-size:13px;">Sin movimientos este día.</p></div>`;
+  } else {
+    el.innerHTML=`<div class="section-label">${day} de ${MONTHS[histSelMonth]} ${histSelYear}</div>${parts.join('')}`;
+  }
+  // Scroll to detail
+  setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+}
+
+function jumpTo(y,m){curYear=y;curMonth=m;updateMonthLabel();showPage('dashboard');}
+
+// ── Modal editar ──────────────────────────────────────────────────────────────
+function openModal(t,id){
+  modalState={tipo:t,id};
+  document.getElementById('modal-title').textContent=t==='gasto'?'Editar gasto':'Editar ingreso';
+  const body=document.getElementById('modal-body');
+  if(t==='gasto'){
+    const g=gastos.find(x=>x.id===id);if(!g)return;
+    body.innerHTML=`<div class="modal-form-grid">
+      <div class="form-group"><label class="form-label">Título</label><input class="form-input" id="m-titulo" type="text" value="${g.titulo||g.desc||''}"></div>
+      <div class="form-group"><label class="form-label">Monto ($)</label><input class="form-input" id="m-monto" type="number" min="0" value="${g.monto}"></div>
+      <div class="form-group" style="grid-column:1/-1;"><label class="form-label">Descripción (opcional)</label><input class="form-input" id="m-desc" type="text" value="${g.titulo?g.desc||'':'' }"></div>
+      <div class="form-group"><label class="form-label">Categoría</label><select class="form-select" id="m-cat">${Object.keys(CATS).map(c=>`<option${c===g.categoria?' selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Fecha</label><input class="form-input" id="m-fecha" type="date" value="${g.fecha}"></div>
+    </div>`;
+  } else {
+    const i=ingresos.find(x=>x.id===id);if(!i)return;
+    body.innerHTML=`<div class="modal-form-grid"><div class="form-group"><label class="form-label">Quién transfirió</label><input class="form-input" id="m-origen" type="text" value="${i.origen}"></div><div class="form-group"><label class="form-label">Monto ($)</label><input class="form-input" id="m-monto" type="number" min="0" value="${i.monto}"></div><div class="form-group"><label class="form-label">Descripción</label><input class="form-input" id="m-desc-i" type="text" value="${i.desc||''}"></div><div class="form-group"><label class="form-label">Fecha</label><input class="form-input" id="m-fecha" type="date" value="${i.fecha}"></div></div>`;
+  }
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal(e){if(e&&e.target!==document.getElementById('modal-overlay'))return;document.getElementById('modal-overlay').classList.remove('open');modalState=null;}
+function modalSave(){
+  if(!modalState)return;
+  const{tipo:t,id}=modalState;
+  const monto=parseFloat(document.getElementById('m-monto').value);
+  const fecha=document.getElementById('m-fecha').value;
+  if(isNaN(monto)||monto<=0||!fecha)return;
+  if(t==='gasto'){const titulo=document.getElementById('m-titulo').value.trim(),desc=document.getElementById('m-desc').value.trim(),cat=document.getElementById('m-cat').value;if(!titulo)return;const idx=gastos.findIndex(x=>x.id===id);if(idx>-1)gastos[idx]={...gastos[idx],titulo,desc,monto,categoria:cat,fecha};}
+  else{const origen=document.getElementById('m-origen').value.trim(),desc=document.getElementById('m-desc-i').value.trim();if(!origen)return;const idx=ingresos.findIndex(x=>x.id===id);if(idx>-1)ingresos[idx]={...ingresos[idx],origen,monto,desc,fecha};}
+  save();document.getElementById('modal-overlay').classList.remove('open');modalState=null;renderItemsList();
+}
+function modalDelete(){
+  if(!modalState)return;
+  const{tipo:t,id}=modalState;
+  if(t==='gasto')gastos=gastos.filter(x=>x.id!==id);else ingresos=ingresos.filter(x=>x.id!==id);
+  save();document.getElementById('modal-overlay').classList.remove('open');modalState=null;renderItemsList();
+}
+
+// ── Gestión supermercados ────────────────────────────────────────────────────
+function openEditSupersModal(){
+  renderSupersList();
+  document.getElementById('ns-nombre').value='';
+  document.getElementById('ns-error').style.display='none';
+  document.getElementById('modal-supers').classList.add('open');
+}
+function closeSupersModal(e){
+  if(e&&e.target!==document.getElementById('modal-supers'))return;
+  document.getElementById('modal-supers').classList.remove('open');
+  renderSuper();
+}
+function renderSupersList(){
+  const mesC=getByMes(compras,curYear,curMonth);
+  document.getElementById('supers-list').innerHTML=supermercados.map((s,i)=>{
+    const tieneCompras=mesC.some(c=>c.supermercado===s.nombre);
+    const nextCol=PALETTE[(i+1)%PALETTE.length];
+    return`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);">
+      <div style="width:12px;height:12px;border-radius:3px;background:${s.color};flex-shrink:0;"></div>
+      <div style="flex:1;font-size:14px;">${s.nombre}</div>
+      ${tieneCompras
+        ? `<span style="font-size:11px;font-family:var(--font-mono);color:var(--muted);padding:3px 8px;background:var(--surface2);border-radius:4px;">con compras</span>`
+        : `<button class="item-btn del" onclick="delSuper('${s.nombre}')" title="Eliminar" style="font-size:16px;">×</button>`
+      }
+    </div>`;
+  }).join('');
+  if(supermercados.length===0) document.getElementById('supers-list').innerHTML='<div style="color:var(--muted);font-family:var(--font-mono);font-size:13px;padding:0.5rem 0;">Sin supermercados. Agregá uno.</div>';
+}
+function addSuper(){
+  const nombre=document.getElementById('ns-nombre').value.trim();
+  const errEl=document.getElementById('ns-error');
+  if(!nombre){errEl.textContent='Ingresá un nombre.';errEl.style.display='';return;}
+  if(supermercados.find(s=>s.nombre.toLowerCase()===nombre.toLowerCase())){errEl.textContent='Ya existe un supermercado con ese nombre.';errEl.style.display='';return;}
+  const usedColors=supermercados.map(s=>s.color);
+  const color=PALETTE.find(c=>!usedColors.includes(c))||PALETTE[supermercados.length%PALETTE.length];
+  supermercados.push({nombre,color});
+  saveSupers();
+  document.getElementById('ns-nombre').value='';
+  errEl.style.display='none';
+  renderSupersList();
+}
+function delSuper(nombre){
+  supermercados=supermercados.filter(s=>s.nombre!==nombre);
+  saveSupers();
+  renderSupersList();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────────────────────
+updateMonthLabel();
+renderDashboard();
+</script>
+</body>
+</html>
