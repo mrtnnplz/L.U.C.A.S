@@ -333,6 +333,12 @@
           <circle cx="8" cy="8" r="6.5"/><polyline points="8,4.5 8,8 10.5,10"/>
         </svg>Historial
       </div>
+      <div class="nav-item" onclick="showPage('ajustes')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="2.5"/>
+          <path d="M8 1v2M8 13v2M1 8h2M13 8h2M2.93 2.93l1.41 1.41M11.66 11.66l1.41 1.41M2.93 13.07l1.41-1.41M11.66 4.34l1.41-1.41"/>
+        </svg>Ajustes
+      </div>
     </nav>
     <div class="sidebar-footer">
       <div class="month-selector">
@@ -509,6 +515,42 @@
       <div id="hist-day-detail"></div>
     </div>
 
+    <!-- AJUSTES -->
+    <div id="page-ajustes" class="page">
+      <div class="page-header">
+        <div class="page-title">Ajustes</div>
+        <div class="page-subtitle">backup y restauración de datos</div>
+      </div>
+
+      <div class="section-label">copia de seguridad</div>
+      <div class="form-card" style="margin-bottom:1.5rem;">
+        <p style="font-size:14px;color:var(--muted2);line-height:1.6;margin-bottom:1.25rem;">Exportá todos tus datos a un archivo JSON. Guardalo en tus archivos o en iCloud para tener una copia de seguridad.</p>
+        <div id="backup-stats" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:1.25rem;"></div>
+        <button class="btn btn-green" onclick="exportarDatos()">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8M5 7l3 3 3-3"/><path d="M3 11v2h10v-2"/></svg>
+          Exportar datos
+        </button>
+      </div>
+
+      <div class="section-label">restaurar datos</div>
+      <div class="form-card" style="margin-bottom:1.5rem;">
+        <p style="font-size:14px;color:var(--muted2);line-height:1.6;margin-bottom:1.25rem;">Importá un archivo de backup previamente exportado. <span style="color:var(--red);">Esto reemplaza todos los datos actuales.</span></p>
+        <label style="display:flex;flex-direction:column;gap:10px;">
+          <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importarDatos(this)">
+          <button class="btn btn-ghost" onclick="document.getElementById('import-file').click()">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 10V2M5 5l3-3 3 3"/><path d="M3 11v2h10v-2"/></svg>
+            Seleccionar archivo de backup
+          </button>
+        </label>
+        <div id="import-feedback" style="margin-top:10px;font-size:13px;font-family:var(--font-mono);display:none;"></div>
+      </div>
+
+      <div class="section-label">última exportación</div>
+      <div class="form-card">
+        <div id="last-export-info" style="font-size:13px;font-family:var(--font-mono);color:var(--muted2);">Nunca exportado</div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -630,7 +672,7 @@ function superTotalMes(y,m){return getByMes(compras,y,m).reduce((a,c)=>a+c.produ
 function todayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
 // ── Nav ──────────────────────────────────────────────────────────────────────
-const PAGES=['dashboard','cargar','supermercado','historial'];
+const PAGES=['dashboard','cargar','supermercado','historial','ajustes'];
 function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -640,6 +682,7 @@ function showPage(id){
   if(id==='cargar')      renderCargar();
   if(id==='supermercado')renderSuper();
   if(id==='historial')   renderHistorial();
+  if(id==='ajustes')     renderAjustes();
 }
 function changeMonth(dir){
   curMonth+=dir;
@@ -1445,6 +1488,73 @@ function delSuper(nombre){
   supermercados=supermercados.filter(s=>s.nombre!==nombre);
   saveSupers();
   renderSupersList();
+}
+
+// ── Ajustes / Backup ─────────────────────────────────────────────────────────
+function renderAjustes(){
+  const stats=document.getElementById('backup-stats');
+  stats.innerHTML=`
+    <div class="metric-card"><div class="metric-label">Gastos</div><div class="metric-value" style="font-size:18px;">${gastos.length}</div></div>
+    <div class="metric-card"><div class="metric-label">Ingresos</div><div class="metric-value" style="font-size:18px;">${ingresos.length}</div></div>
+    <div class="metric-card"><div class="metric-label">Compras</div><div class="metric-value" style="font-size:18px;">${compras.length}</div></div>`;
+  const lastExport=localStorage.getItem('mf_last_export');
+  document.getElementById('last-export-info').textContent=lastExport
+    ?'Último backup: '+new Date(lastExport).toLocaleString('es-AR')
+    :'Nunca exportado';
+}
+
+function exportarDatos(){
+  const data={
+    version:1,
+    exportDate:new Date().toISOString(),
+    gastos,ingresos,compras,
+    supermercados,
+  };
+  const json=JSON.stringify(data,null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const fecha=new Date();
+  const nombre=`mis-finanzas-backup-${fecha.getFullYear()}${String(fecha.getMonth()+1).padStart(2,'0')}${String(fecha.getDate()).padStart(2,'0')}.json`;
+  a.href=url; a.download=nombre;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  localStorage.setItem('mf_last_export',new Date().toISOString());
+  renderAjustes();
+}
+
+function importarDatos(input){
+  const file=input.files[0];
+  if(!file)return;
+  const fb=document.getElementById('import-feedback');
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.gastos||!data.ingresos||!data.compras) throw new Error('Formato inválido');
+      showConfirm(
+        'Restaurar backup',
+        `¿Reemplazás todos los datos actuales con el backup del ${new Date(data.exportDate).toLocaleDateString('es-AR')}? Esta acción no se puede deshacer.`,
+        ()=>{
+          gastos=data.gastos||[];
+          ingresos=data.ingresos||[];
+          compras=data.compras||[];
+          if(data.supermercados) supermercados=data.supermercados;
+          save(); saveSupers();
+          fb.style.display='';
+          fb.style.color='var(--green)';
+          fb.textContent='✓ Datos restaurados correctamente — '+gastos.length+' gastos, '+ingresos.length+' ingresos, '+compras.length+' compras.';
+          renderAjustes();
+        }
+      );
+    } catch(err){
+      fb.style.display='';
+      fb.style.color='var(--red)';
+      fb.textContent='✗ Archivo inválido. Asegurate de seleccionar un backup exportado desde esta app.';
+    }
+    input.value='';
+  };
+  reader.readAsText(file);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
