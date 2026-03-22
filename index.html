@@ -466,12 +466,23 @@
                 <input class="form-input precio-inp" id="prod-precio" type="number" min="0" placeholder="0">
               </div>
               <div class="prod-snap-item">
+                <div class="prod-field-label" style="display:flex;align-items:center;gap:8px;">
+                  Descuento
+                  <div style="display:flex;border:1px solid var(--border2);border-radius:6px;overflow:hidden;">
+                    <button id="desc-tipo-pct" onclick="setDescTipo('pct')" style="padding:2px 8px;font-size:11px;font-family:var(--font-mono);border:none;background:var(--green);color:#0e0e0e;cursor:pointer;">%</button>
+                    <button id="desc-tipo-monto" onclick="setDescTipo('monto')" style="padding:2px 8px;font-size:11px;font-family:var(--font-mono);border:none;background:var(--surface2);color:var(--muted2);cursor:pointer;">$</button>
+                  </div>
+                </div>
+                <input class="form-input" id="prod-descuento" type="number" min="0" placeholder="0 (opcional)">
+              </div>
+              <div class="prod-snap-item">
                 <div class="prod-field-label">&#160;</div>
                 <button class="btn btn-green" onclick="addProducto()">+ Agregar</button>
               </div>
             </div>
             <div class="prod-scroll-indicator" id="prod-dots">
               <div class="prod-scroll-dot active"></div>
+              <div class="prod-scroll-dot"></div>
               <div class="prod-scroll-dot"></div>
               <div class="prod-scroll-dot"></div>
               <div class="prod-scroll-dot"></div>
@@ -523,6 +534,9 @@
           <div class="chart-card-title">ticket promedio por supermercado</div>
           <div style="position:relative;height:200px;"><canvas id="chart-super-comp"></canvas></div>
         </div>
+
+        <!-- Análisis descuentos -->
+        <div id="analisis-desc-section" style="display:none;margin-bottom:2rem;"></div>
       </div>
 
     </div>
@@ -700,7 +714,7 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 function fmt(n){return '$'+Math.round(Math.abs(n)).toLocaleString('es-AR');}
 function monthKey(y,m){return y+'-'+String(m+1).padStart(2,'0');}
 function getByMes(arr,y,m){return arr.filter(x=>{const d=new Date(x.fecha+'T12:00:00');return d.getFullYear()===y&&d.getMonth()===m;});}
-function superTotalMes(y,m){return getByMes(compras,y,m).reduce((a,c)=>a+c.productos.reduce((b,p)=>b+p.precio,0),0);}
+function superTotalMes(y,m){return getByMes(compras,y,m).reduce((a,c)=>a+c.productos.reduce((b,p)=>b+calcPrecioFinal(p.precio,p.descuento||0,p.descTipo||'pct'),0),0);}
 function todayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
 // ── Nav ──────────────────────────────────────────────────────────────────────
@@ -868,7 +882,7 @@ function renderComprasList(lista){
   el.innerHTML=sorted.map(c=>{
     const d=new Date(c.fecha+'T12:00:00');
     const fs=d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
-    const total=c.productos.reduce((a,p)=>a+p.precio,0);
+    const total=c.productos.reduce((a,p)=>a+calcPrecioFinal(p.precio,p.descuento||0,p.descTipo||'pct'),0);
     const col=superCol(c.supermercado);
     return`<div class="compra-row">
       <div style="flex:1;min-width:0;cursor:pointer;" onclick="abrirDetalle('${c.id}')">
@@ -902,44 +916,54 @@ function renderDetalle(){
   if(!c)return;
   const d=new Date(c.fecha+'T12:00:00');
   const fs=d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
-  const total=c.productos.reduce((a,p)=>a+p.precio,0);
+  const totalBruto=c.productos.reduce((a,p)=>a+p.precio,0);
+  const totalFinal=c.productos.reduce((a,p)=>a+calcPrecioFinal(p.precio,p.descuento||0,p.descTipo||'pct'),0);
+  const totalDesc=totalBruto-totalFinal;
   const col=superCol(c.supermercado);
 
   document.getElementById('detalle-header').style.borderLeftColor=col;
   document.getElementById('detalle-header').innerHTML=`
     <div style="font-size:20px;font-weight:700;color:${col}">${c.supermercado}</div>
-    <div class="compra-detail-meta"><span>Fecha: ${fs}</span><span>${c.productos.length} producto${c.productos.length!==1?'s':''}</span></div>
-    <div class="compra-detail-total" style="color:${col}">${fmt(total)}</div>`;
+    <div class="compra-detail-meta"><span>Fecha: ${fs}</span><span>${c.productos.length} producto${c.productos.length!==1?'s':''}</span>${totalDesc>0?`<span style="color:var(--green)">Ahorraste ${fmt(totalDesc)}</span>`:''}</div>
+    <div style="display:flex;align-items:baseline;gap:10px;margin-top:8px;">
+      <div class="compra-detail-total" style="color:${col};margin-top:0;">${fmt(totalFinal)}</div>
+      ${totalDesc>0?`<div style="font-size:14px;font-family:var(--font-mono);color:var(--muted);text-decoration:line-through;">${fmt(totalBruto)}</div>`:''}
+    </div>`;
 
   const listEl=document.getElementById('detalle-productos-list');
   if(c.productos.length===0){
     listEl.innerHTML='<div style="color:var(--muted);font-family:var(--font-mono);font-size:13px;padding:0.5rem 0 1rem;">Agregá productos abajo.</div>';
     return;
   }
-  const sorted=[...c.productos].sort((a,b)=>b.precio-a.precio);
-  const maxP=sorted[0].precio||1;
+  const sorted=[...c.productos].sort((a,b)=>calcPrecioFinal(b.precio,b.descuento||0,b.descTipo||'pct')-calcPrecioFinal(a.precio,a.descuento||0,a.descTipo||'pct'));
+  const maxP=calcPrecioFinal(sorted[0].precio,sorted[0].descuento||0,sorted[0].descTipo||'pct')||1;
   listEl.innerHTML=sorted.map(p=>{
     const cant=p.cantidad||1;
+    const final=calcPrecioFinal(p.precio,p.descuento||0,p.descTipo||'pct');
+    const ahorrado=p.precio-final;
     let cantLabel='';
     if(p.pesoVar){
       const kgStr=Number.isInteger(cant)?cant+'kg':cant.toFixed(3).replace(/\.?0+$/,'')+'kg';
-      const pxkg=Math.round(p.precio/cant);
-      cantLabel=`<span style="font-size:11px;font-family:var(--font-mono);color:var(--muted);">${kgStr} · ${fmt(pxkg)}/kg</span>`;
+      cantLabel=`<span style="font-size:11px;font-family:var(--font-mono);color:var(--muted);">${kgStr} · ${fmt(Math.round(final/cant))}/kg</span>`;
     } else {
-      cantLabel=cant>1?`<span style="font-size:11px;font-family:var(--font-mono);color:var(--muted);">x${cant} · ${fmt(Math.round(p.precio/cant))}c/u</span>`:'';
+      cantLabel=cant>1?`<span style="font-size:11px;font-family:var(--font-mono);color:var(--muted);">x${cant} · ${fmt(Math.round(final/cant))}c/u</span>`:'';
     }
     const presLabel=p.presentacion?`<span style="font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--surface2);padding:1px 6px;border-radius:3px;">${p.presentacion}</span>`:'';
     const pesoLabel=p.pesoVar?`<span class="peso-badge">~kg</span>`:'';
+    const descLabel=ahorrado>0?`<span style="font-size:11px;font-family:var(--font-mono);color:var(--green);background:rgba(61,220,132,0.1);padding:1px 6px;border-radius:3px;">-${p.descTipo==='pct'?p.descuento+'%':fmt(p.descuento)}</span>`:'';
     return`<div class="producto-row">
       <div class="producto-info">
         <div class="producto-nombre" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
           ${p.nombre}
           ${p.marca?`<span style="font-size:11px;font-family:var(--font-mono);color:var(--muted);background:var(--surface2);padding:1px 6px;border-radius:3px;">${p.marca}</span>`:''}
-          ${presLabel}${pesoLabel}${cantLabel}
+          ${presLabel}${pesoLabel}${descLabel}${cantLabel}
         </div>
-        <div class="producto-bar"><div class="producto-bar-fill" style="width:${Math.round((p.precio/maxP)*100)}%;background:${col};"></div></div>
+        <div class="producto-bar"><div class="producto-bar-fill" style="width:${Math.round((final/maxP)*100)}%;background:${col};"></div></div>
       </div>
-      <div class="producto-precio">${fmt(p.precio)}</div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;">
+        <div class="producto-precio">${fmt(final)}</div>
+        ${ahorrado>0?`<div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);text-decoration:line-through;">${fmt(p.precio)}</div>`:''}
+      </div>
       <button class="producto-del" onclick="delProducto('${p.id}')">×</button>
     </div>`;
   }).join('');
@@ -971,6 +995,22 @@ function togglePesoVar(){
   }
 }
 
+let descTipo='pct'; // 'pct' | 'monto'
+function setDescTipo(t){
+  descTipo=t;
+  document.getElementById('desc-tipo-pct').style.background=t==='pct'?'var(--green)':'var(--surface2)';
+  document.getElementById('desc-tipo-pct').style.color=t==='pct'?'#0e0e0e':'var(--muted2)';
+  document.getElementById('desc-tipo-monto').style.background=t==='monto'?'var(--green)':'var(--surface2)';
+  document.getElementById('desc-tipo-monto').style.color=t==='monto'?'#0e0e0e':'var(--muted2)';
+  document.getElementById('prod-descuento').placeholder=t==='pct'?'Ej: 20':'Ej: 500';
+}
+
+function calcPrecioFinal(precio,descuento,descTipoVal){
+  if(!descuento||descuento<=0) return precio;
+  if(descTipoVal==='pct') return Math.max(0,precio*(1-descuento/100));
+  return Math.max(0,precio-descuento);
+}
+
 function addProducto(){
   const nombre=document.getElementById('prod-nombre').value.trim();
   const marca=document.getElementById('prod-marca').value.trim();
@@ -979,18 +1019,21 @@ function addProducto(){
   const cantRaw=document.getElementById('prod-cantidad').value;
   const cantidad=pesoVar?parseFloat(cantRaw):parseInt(cantRaw);
   const precio=parseFloat(document.getElementById('prod-precio').value);
+  const descRaw=parseFloat(document.getElementById('prod-descuento').value);
+  const descuento=isNaN(descRaw)||descRaw<=0?0:descRaw;
   if(!nombre||!marca||isNaN(precio)||precio<0)return;
   if(pesoVar&&(isNaN(cantidad)||cantidad<=0))return;
   if(!pesoVar&&(isNaN(cantidad)||cantidad<1))return;
   const c=compras.find(x=>x.id===detalleId);
   if(!c)return;
-  c.productos.push({id:uid(),nombre,marca,presentacion,cantidad,pesoVar,precio});
+  c.productos.push({id:uid(),nombre,marca,presentacion,cantidad,pesoVar,precio,descuento,descTipo});
   save();
   document.getElementById('prod-nombre').value='';
   document.getElementById('prod-marca').value='';
   document.getElementById('prod-presentacion').value='';
   document.getElementById('prod-cantidad').value='';
   document.getElementById('prod-precio').value='';
+  document.getElementById('prod-descuento').value='';
   document.getElementById('prod-peso-var').checked=false;
   document.getElementById('prod-chips').innerHTML='';
   togglePesoVar();
@@ -1242,7 +1285,7 @@ function renderAnalisis(){
   const superTickets={};
   const superCounts={};
   compras.forEach(c=>{
-    const t=c.productos.reduce((a,p)=>a+p.precio,0);
+    const t=c.productos.reduce((a,p)=>a+calcPrecioFinal(p.precio,p.descuento||0,p.descTipo||'pct'),0);
     if(c.productos.length>0){
       superTickets[c.supermercado]=(superTickets[c.supermercado]||0)+t;
       superCounts[c.supermercado]=(superCounts[c.supermercado]||0)+1;
@@ -1259,6 +1302,79 @@ function renderAnalisis(){
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` Promedio: $${ctx.parsed.y.toLocaleString('es-AR')}`}}},scales:{x:{ticks:{color:'#888',font:{family:'DM Mono',size:11}},grid:{display:false}},y:{ticks:{color:'#666',font:{family:'DM Mono',size:11},callback:v=>'$'+(v/1000).toFixed(0)+'k'},grid:{color:'#2a2a2a'}}}}
     });
   }
+  // ── Análisis de descuentos ──
+  const descSection=document.getElementById('analisis-desc-section');
+  const prodsConDesc=[];
+  compras.forEach(c=>{
+    c.productos.forEach(p=>{
+      if(!p.descuento||p.descuento<=0)return;
+      const final=calcPrecioFinal(p.precio,p.descuento,p.descTipo||'pct');
+      const ahorrado=p.precio-final;
+      const pct=Math.round((ahorrado/p.precio)*100);
+      prodsConDesc.push({nombre:p.nombre,marca:p.marca||'',supermercado:c.supermercado,precio:p.precio,final,ahorrado,pct,fecha:c.fecha,descuento:p.descuento,descTipo:p.descTipo||'pct'});
+    });
+  });
+
+  if(prodsConDesc.length===0){descSection.style.display='none';return;}
+  descSection.style.display='';
+
+  // Total ahorrado este mes
+  const mesConDesc=prodsConDesc.filter(x=>{const d=new Date(x.fecha+'T12:00:00');return d.getMonth()===curMonth&&d.getFullYear()===curYear;});
+  const totalAhorradoMes=mesConDesc.reduce((a,x)=>a+x.ahorrado,0);
+  const totalAhorradoHist=prodsConDesc.reduce((a,x)=>a+x.ahorrado,0);
+
+  // Descuentos por supermercado
+  const descPorSuper={};
+  prodsConDesc.forEach(x=>{descPorSuper[x.supermercado]=(descPorSuper[x.supermercado]||0)+x.ahorrado;});
+  const superDescRank=Object.entries(descPorSuper).sort((a,b)=>b[1]-a[1]);
+
+  // Top por % y por $
+  const topPct=[...prodsConDesc].sort((a,b)=>b.pct-a.pct).slice(0,5);
+  const topMonto=[...prodsConDesc].sort((a,b)=>b.ahorrado-a.ahorrado).slice(0,5);
+
+  descSection.innerHTML=`
+    <div class="section-label">descuentos</div>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:1.5rem;">
+      <div class="metric-card"><div class="metric-label">Ahorrado este mes</div><div class="metric-value" style="color:var(--green);font-size:18px;">${fmt(totalAhorradoMes)}</div></div>
+      <div class="metric-card"><div class="metric-label">Ahorrado histórico</div><div class="metric-value" style="color:var(--green);font-size:18px;">${fmt(totalAhorradoHist)}</div></div>
+      <div class="metric-card"><div class="metric-label">Productos con desc.</div><div class="metric-value" style="font-size:18px;">${prodsConDesc.length}</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:1.5rem;">
+      <div class="chart-card">
+        <div class="chart-card-title">mayor descuento en %</div>
+        ${topPct.map(x=>`<div class="progress-row">
+          <div class="progress-meta">
+            <span class="progress-cat" style="font-size:13px;">${x.nombre} <span style="font-size:11px;color:var(--muted);">${x.marca}</span></span>
+            <span class="progress-val" style="color:var(--green);">-${x.pct}%</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" style="width:${x.pct}%;background:var(--green);"></div></div>
+          <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-top:3px;">${x.supermercado} · ${fmt(x.ahorrado)} ahorrado</div>
+        </div>`).join('')}
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">mayor descuento en $</div>
+        ${topMonto.map(x=>`<div class="progress-row">
+          <div class="progress-meta">
+            <span class="progress-cat" style="font-size:13px;">${x.nombre} <span style="font-size:11px;color:var(--muted);">${x.marca}</span></span>
+            <span class="progress-val" style="color:var(--green);">${fmt(x.ahorrado)}</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" style="width:${Math.round((x.ahorrado/topMonto[0].ahorrado)*100)}%;background:var(--green);"></div></div>
+          <div style="font-size:11px;font-family:var(--font-mono);color:var(--muted);margin-top:3px;">${x.supermercado} · -${x.pct}%</div>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-card-title">supermercado con más descuentos (histórico)</div>
+      ${superDescRank.map(([s,total])=>`<div class="progress-row">
+        <div class="progress-meta">
+          <span class="progress-cat" style="color:${superCol(s)}">${s}</span>
+          <span class="progress-val" style="color:var(--green);">${fmt(total)}</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" style="width:${Math.round((total/superDescRank[0][1])*100)}%;background:${superCol(s)};"></div></div>
+      </div>`).join('')}
+    </div>`;
 }
 
 function renderEvolucion(){
