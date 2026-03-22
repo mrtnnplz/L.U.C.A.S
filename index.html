@@ -181,9 +181,16 @@
   .prod-inputs-row .form-input{flex:1;}
   .prod-inputs-row .form-input.marca-inp{width:140px;flex:none;}
   .prod-inputs-row .form-input.precio-inp{width:120px;flex:none;}
-  .prod-snap-item{display:contents;} /* desktop: children flow inline */
-  .prod-field-label{display:none;} /* hidden on desktop */
-  .prod-scroll-indicator{display:none;} /* hidden on desktop */
+  .prod-snap-item{display:contents;}
+  .prod-field-label{display:none;}
+  .prod-scroll-indicator{display:none;}
+  .prod-inputs-row{display:flex;gap:8px;margin-bottom:4px;align-items:center;flex-wrap:nowrap;}
+  .prod-inputs-row #prod-nombre{flex:2;min-width:0;}
+  .prod-inputs-row #prod-marca{flex:1.2;min-width:0;}
+  .prod-inputs-row #prod-presentacion{width:110px;flex:none;}
+  .prod-inputs-row #prod-cantidad{width:80px;flex:none;}
+  .prod-inputs-row #prod-precio{width:110px;flex:none;}
+  .prod-inputs-row .btn{width:auto;padding:10px 16px;flex:none;}
   .prod-chips{display:flex;flex-wrap:wrap;gap:6px;min-height:0;margin-bottom:4px;}
   .prod-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border2);font-size:12px;font-family:var(--font-mono);color:var(--text);cursor:pointer;transition:all 0.15s;animation:fadeIn 0.15s ease;}
   .prod-chip:hover{background:var(--surface);border-color:var(--amber);color:var(--amber);}
