@@ -675,6 +675,24 @@
   </div>
 </div>
 
+<!-- Modal editar fecha compra -->
+<div class="modal-overlay" id="modal-fecha-compra" onclick="closeFechaModal(event)">
+  <div class="modal" style="max-width:340px;">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-fecha-title">Editar fecha</div>
+      <button class="modal-close" onclick="closeFechaModal()">×</button>
+    </div>
+    <div class="form-group" style="margin-bottom:1.25rem;">
+      <label class="form-label">Nueva fecha</label>
+      <input class="form-input" id="inp-fecha-compra" type="date">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeFechaModal()">Cancelar</button>
+      <button class="btn btn-green" onclick="saveFechaCompra()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const CATS={'Salidas':'#ff5c5c','Delivery':'#ffb547','Transporte':'#4da6ff','Ropa':'#e879a0','Salud':'#a78bfa','Compra única':'#2dd4bf','Otros':'#666'};
@@ -894,6 +912,7 @@ function renderComprasList(lista){
       </div>
       <div style="font-size:15px;font-weight:700;font-family:var(--font-mono);color:${col};flex-shrink:0;">${fmt(total)}</div>
       <div class="item-actions">
+        <button class="item-btn edit" onclick="event.stopPropagation();editFechaCompra('${c.id}')" title="Editar fecha">✎</button>
         <button class="item-btn view" onclick="abrirDetalle('${c.id}')" title="Ver detalle">&#9654;</button>
         <button class="item-btn del" onclick="event.stopPropagation();delCompra('${c.id}')" title="Eliminar compra">×</button>
       </div>
@@ -995,7 +1014,30 @@ function togglePesoVar(){
   }
 }
 
-let descTipo='pct'; // 'pct' | 'monto'
+let editFechaId=null;
+function editFechaCompra(id){
+  const c=compras.find(x=>x.id===id);
+  if(!c)return;
+  editFechaId=id;
+  document.getElementById('modal-fecha-title').textContent='Fecha — '+c.supermercado;
+  document.getElementById('inp-fecha-compra').value=c.fecha;
+  document.getElementById('modal-fecha-compra').classList.add('open');
+}
+function closeFechaModal(e){
+  if(e&&e.target!==document.getElementById('modal-fecha-compra'))return;
+  document.getElementById('modal-fecha-compra').classList.remove('open');
+  editFechaId=null;
+}
+function saveFechaCompra(){
+  const fecha=document.getElementById('inp-fecha-compra').value;
+  if(!fecha||!editFechaId)return;
+  const c=compras.find(x=>x.id===editFechaId);
+  if(c)c.fecha=fecha;
+  save();
+  document.getElementById('modal-fecha-compra').classList.remove('open');
+  editFechaId=null;
+  renderSuper();
+} // 'pct' | 'monto'
 function setDescTipo(t){
   descTipo=t;
   document.getElementById('desc-tipo-pct').style.background=t==='pct'?'var(--green)':'var(--surface2)';
