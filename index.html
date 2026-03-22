@@ -177,10 +177,13 @@
   .add-producto-row .form-input.precio-inp{width:130px;flex:none;}
 
   .prod-form-wrap{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
-  .prod-inputs-row{display:flex;gap:8px;margin-bottom:8px;}
+  .prod-inputs-row{display:flex;gap:8px;margin-bottom:4px;align-items:flex-end;}
   .prod-inputs-row .form-input{flex:1;}
   .prod-inputs-row .form-input.marca-inp{width:140px;flex:none;}
   .prod-inputs-row .form-input.precio-inp{width:120px;flex:none;}
+  .prod-snap-item{display:contents;} /* desktop: children flow inline */
+  .prod-field-label{display:none;} /* hidden on desktop */
+  .prod-scroll-indicator{display:none;} /* hidden on desktop */
   .prod-chips{display:flex;flex-wrap:wrap;gap:6px;min-height:0;margin-bottom:4px;}
   .prod-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;background:var(--surface2);border:1px solid var(--border2);font-size:12px;font-family:var(--font-mono);color:var(--text);cursor:pointer;transition:all 0.15s;animation:fadeIn 0.15s ease;}
   .prod-chip:hover{background:var(--surface);border-color:var(--amber);color:var(--amber);}
@@ -252,18 +255,22 @@
     .form-grid{grid-template-columns:1fr;}
     .form-input,.form-select{font-size:16px;padding:12px;} /* 16px prevents iOS zoom */
 
-    /* Product form — nombre full width, resto abajo */
-    .prod-inputs-row{flex-wrap:wrap;gap:8px;}
-    .prod-inputs-row .form-input{min-width:0;}
-    .prod-inputs-row #prod-nombre{width:100%;flex:none;}
-    .prod-inputs-row .form-input.marca-inp{flex:1;}
-    .prod-inputs-row .form-input[id=prod-presentacion]{width:110px;flex:none;}
-    .prod-inputs-row .form-input[id=prod-cantidad]{width:80px;flex:none;}
-    .prod-inputs-row .form-input.precio-inp{flex:1;}
-    .prod-inputs-row .btn{width:100%;margin-top:4px;}
-
-    /* Super grid */
-    .super-grid{grid-template-columns:repeat(2,1fr);}
+    /* Product form — horizontal scroll snap, one field at a time */
+    .prod-inputs-row{
+      display:flex;flex-wrap:nowrap;gap:8px;
+      overflow-x:auto;scroll-snap-type:x mandatory;
+      -webkit-overflow-scrolling:touch;
+      padding-bottom:2px;align-items:stretch;
+    }
+    .prod-inputs-row::-webkit-scrollbar{display:none;}
+    .prod-snap-item{
+      display:flex!important;flex-direction:column;gap:4px;
+      scroll-snap-align:start;flex:none;
+      min-width:calc(100vw - 3rem);
+    }
+    .prod-snap-item .form-input,.prod-snap-item .btn{width:100%!important;min-width:0;flex:none;}
+    .prod-field-label{display:block;}
+    .prod-scroll-indicator{display:flex;}
 
     /* Calendar */
     .cal-cell{min-height:44px;padding:5px 4px;}
@@ -439,13 +446,39 @@
               <input type="checkbox" id="prod-peso-var" onchange="togglePesoVar()">
               <span>Peso variable (ej: tomates, frutas, carne)</span>
             </label>
-            <div class="prod-inputs-row">
-              <input class="form-input" id="prod-nombre" type="text" placeholder="Nombre" autocomplete="off" oninput="onProdNombreInput()">
-              <input class="form-input marca-inp" id="prod-marca" type="text" placeholder="Marca">
-              <input class="form-input" id="prod-presentacion" type="text" placeholder="Ej: 1L, 500g, x6" style="width:110px;flex:none;">
-              <input class="form-input" id="prod-cantidad" type="number" min="0.001" step="1" placeholder="Unid." style="width:90px;flex:none;">
-              <input class="form-input precio-inp" id="prod-precio" type="number" min="0" placeholder="Total $">
-              <button class="btn btn-green" style="width:auto;padding:10px 18px;" onclick="addProducto()">+ Agregar</button>
+            <div class="prod-inputs-row" id="prod-inputs-row" onscroll="onProdScroll()">
+              <div class="prod-snap-item">
+                <div class="prod-field-label">Nombre</div>
+                <input class="form-input" id="prod-nombre" type="text" placeholder="Ej: Leche" autocomplete="off" oninput="onProdNombreInput()">
+              </div>
+              <div class="prod-snap-item">
+                <div class="prod-field-label">Marca</div>
+                <input class="form-input marca-inp" id="prod-marca" type="text" placeholder="Ej: La Serenísima">
+              </div>
+              <div class="prod-snap-item">
+                <div class="prod-field-label">Presentación</div>
+                <input class="form-input" id="prod-presentacion" type="text" placeholder="Ej: 1L, 500g, x6">
+              </div>
+              <div class="prod-snap-item">
+                <div class="prod-field-label" id="prod-cant-label">Unidades</div>
+                <input class="form-input" id="prod-cantidad" type="number" min="0.001" step="1" placeholder="1">
+              </div>
+              <div class="prod-snap-item">
+                <div class="prod-field-label">Total $</div>
+                <input class="form-input precio-inp" id="prod-precio" type="number" min="0" placeholder="0">
+              </div>
+              <div class="prod-snap-item">
+                <div class="prod-field-label">&#160;</div>
+                <button class="btn btn-green" onclick="addProducto()">+ Agregar</button>
+              </div>
+            </div>
+            <div class="prod-scroll-indicator" id="prod-dots">
+              <div class="prod-scroll-dot active"></div>
+              <div class="prod-scroll-dot"></div>
+              <div class="prod-scroll-dot"></div>
+              <div class="prod-scroll-dot"></div>
+              <div class="prod-scroll-dot"></div>
+              <div class="prod-scroll-dot"></div>
             </div>
           </div>
         </div>
@@ -914,20 +947,29 @@ function renderDetalle(){
   }).join('');
 }
 
+function onProdScroll(){
+  const row=document.getElementById('prod-inputs-row');
+  if(!row)return;
+  const items=row.querySelectorAll('.prod-snap-item');
+  const scrollLeft=row.scrollLeft;
+  const itemWidth=row.offsetWidth;
+  const idx=Math.round(scrollLeft/itemWidth);
+  document.querySelectorAll('.prod-scroll-dot').forEach((d,i)=>d.classList.toggle('active',i===idx));
+}
+
 function togglePesoVar(){
   const isPeso=document.getElementById('prod-peso-var').checked;
   const cantEl=document.getElementById('prod-cantidad');
   const presEl=document.getElementById('prod-presentacion');
+  const lbl=document.getElementById('prod-cant-label');
   if(isPeso){
-    cantEl.placeholder='kg';
-    cantEl.step='0.001';
-    cantEl.min='0.001';
+    cantEl.placeholder='kg'; cantEl.step='0.001'; cantEl.min='0.001';
     presEl.placeholder='Variedad (ej: cherry)';
+    if(lbl)lbl.textContent='Kilogramos';
   } else {
-    cantEl.placeholder='Unid.';
-    cantEl.step='1';
-    cantEl.min='1';
+    cantEl.placeholder='1'; cantEl.step='1'; cantEl.min='1';
     presEl.placeholder='Ej: 1L, 500g, x6';
+    if(lbl)lbl.textContent='Unidades';
   }
 }
 
@@ -954,6 +996,9 @@ function addProducto(){
   document.getElementById('prod-peso-var').checked=false;
   document.getElementById('prod-chips').innerHTML='';
   togglePesoVar();
+  const row=document.getElementById('prod-inputs-row');
+  if(row)row.scrollLeft=0;
+  onProdScroll();
   document.getElementById('prod-nombre').focus();
   renderDetalle();
 }
